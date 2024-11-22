@@ -1,20 +1,43 @@
 # API RESTful em Go para gerenciamento de produtos
 
 ✨ Recursos
-
+<div>
 CRUD completo de produtos
+</div> 
+  
+<div>
 Armazenamento in-memory
+</div> 
+
+<div>
 Tratamento seguro de concorrência
+</div> 
+
+<div>
 Endpoints RESTful
+</div> 
+
 Health check
+</div> 
 
 🛠 Tecnologias
 
+<div>
 Golang
-Gorilla Mux
-Sync primitives
+</div> 
 
-📦 Instalação
+<div>  
+Gorilla Mux
+</div> 
+
+<div>
+Sync primitives
+</div> 
+
+
+
+## 📦 Instalação
+
 Pré-requisitos
 
 Go 1.21+
