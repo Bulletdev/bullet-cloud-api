@@ -1,0 +1,5 @@
+# Go files
+*.exe
+*.test
+*.out
+go.sum
