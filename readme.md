@@ -33,9 +33,9 @@ go mod tidy
 # Rodar aplicação
 go run cmd/main.go
 
-demo:
 
-<img src="/git-api.png">
+
+
 
 🔍 Endpoints
 
@@ -56,3 +56,6 @@ go test ./...
 📄 Licença
 
 BulletDEv all rights reserveds
+
+
+<img src="/git-api.png">
