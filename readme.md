@@ -21,9 +21,9 @@ Go 1.21+
 Git
 
 Passos
-bashCopy# Clonar repositório
+```bash
 git clone https://github.com/bulletdev/magalu-cloud-api.git
-
+```
 # Entrar no diretório
 cd magalu-cloud-api
 
@@ -43,10 +43,12 @@ PUT /products/{id}: Atualizar produto
 DELETE /products/{id}: Deletar produto
 GET /health: Verificar status da aplicação
 
-🧪 Testes
+🧪 Test
 
-bashCopygo test ./...
+```bash
 
+go test ./...
+```
 
 📄 Licença
 
