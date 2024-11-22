@@ -1,4 +1,4 @@
-# API RESTful em Go para gerenciamento de produtos, desenvolvida para demonstrar boas práticas de desenvolvimento.
+# API RESTful em Go para gerenciamento de produtos
 
 ✨ Recursos
 
