@@ -33,6 +33,9 @@ go mod tidy
 # Rodar aplicação
 go run cmd/main.go
 
+demo:
+
+<img src="/git-api.png">
 
 🔍 Endpoints
 
