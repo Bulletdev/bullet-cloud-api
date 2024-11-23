@@ -1,28 +1,30 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
 	"net/http"
 
+	"magalu-cloud-api/internal/models"
+
 	"github.com/gorilla/mux"
-	"yourproject/models"
 )
 
 var productRepo = models.NewProductRepository()
 
-func healthCheck(w http.ResponseWriter, r *http.Request) {
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 }
 
-func getAllProducts(w http.ResponseWriter, r *http.Request) {
+func GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	products := productRepo.GetAll()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(products)
 }
 
-func createProduct(w http.ResponseWriter, r *http.Request) {
+func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var product models.Product
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&product); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -38,7 +40,7 @@ func createProduct(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(product)
 }
 
-func getProduct(w http.ResponseWriter, r *http.Request) {
+func GetProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -52,7 +54,7 @@ func getProduct(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(product)
 }
 
-func updateProduct(w http.ResponseWriter, r *http.Request) {
+func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -71,7 +73,7 @@ func updateProduct(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedProduct)
 }
 
-func deleteProduct(w http.ResponseWriter, r *http.Request) {
+func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
