@@ -20,6 +20,12 @@ Endpoints RESTful
 Health check
 </div> 
 
+## demonstração: 
+
+<details>
+<img src="/demo.png">
+</details>
+
 🛠 Tecnologias
 
 <div>
@@ -81,4 +87,4 @@ go test ./...
 BulletDEv all rights reserveds
 
 
-<img src="/git-api.png">
+<img src="/demo.png">
