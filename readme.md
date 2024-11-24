@@ -87,7 +87,7 @@ GET /health: Verificar status da aplicação
 🧪 Test
 
 <details>
-<img src="/testunit.png">
+<img src="/test-ok.png">
 </details>
 
 ```bash
