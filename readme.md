@@ -86,6 +86,10 @@ GET /health: Verificar status da aplicação
 
 🧪 Test
 
+<details>
+<img src="/testunit.png">
+</details>
+
 ```bash
 
 go test ./...
@@ -96,4 +100,4 @@ go test ./...
 BulletDEv all rights reserveds
 
 
-<img src="/demo.png">
+
