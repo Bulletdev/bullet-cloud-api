@@ -68,12 +68,21 @@ go run cmd/main.go
 
 🔍 Endpoints
 
+<div>
+  
 GET /products: Listar todos produtos
+
 POST /products: Criar produto
+
 GET /products/{id}: Buscar produto específico
+
 PUT /products/{id}: Atualizar produto
+
 DELETE /products/{id}: Deletar produto
+
 GET /health: Verificar status da aplicação
+
+</div> 
 
 🧪 Test
 
