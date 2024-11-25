@@ -1,7 +1,7 @@
 // adicionar CORS para permitir requisições 
 
 package main
-
+ 
 import (
 	"log"
 	"net/http"
