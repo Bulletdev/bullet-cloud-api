@@ -56,10 +56,10 @@ Git
 
 Passos
 ```bash
-git clone https://github.com/bulletdev/magalu-cloud-api.git
+git clone https://github.com/bulletdev/bullet-cloud-api.git
 ```
 # Entrar no diretório
-cd magalu-cloud-api
+cd bullet-cloud-api
 
 # Baixar dependências
 go mod tidy
