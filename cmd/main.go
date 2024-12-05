@@ -20,7 +20,7 @@ func main() {
 
     port := os.Getenv("API_PORT")
     if port == "" {
-        port = "8080" // Porta padrão, caso não esteja definida no ambiente
+        port = "4444" // Porta padrão, caso não esteja definida no ambiente
     }
 
     log.Printf("Server starting on :%s", port)
