@@ -1,4 +1,4 @@
-module magalu-cloud-api
+module bullet-cloud-api
 
 go 1.23
 
