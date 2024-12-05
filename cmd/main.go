@@ -22,6 +22,6 @@ func main() {
 	// checar a saúde do jovem
 	router.HandleFunc("/health", handlers.HealthCheck).Methods("GET")
 
-	log.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Println("Server starting on :4444")
+	log.Fatal(http.ListenAndServe(":4444", router))
 }
