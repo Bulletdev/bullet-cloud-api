@@ -1,33 +1,27 @@
 package main
- 
+
 import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 	"bullet-cloud-api/internal/handlers"
-)  
+
+	"github.com/gorilla/mux"
+)
 
 func main() {
-	router := mux.NewRouter() 
-	
-	
+	router := mux.NewRouter()
+
+	// essa rota deu trabalho, handlers handlers
 	router.HandleFunc("/products", handlers.GetAllProducts).Methods("GET")
 	router.HandleFunc("/products", handlers.CreateProduct).Methods("POST")
 	router.HandleFunc("/products/{id}", handlers.GetProduct).Methods("GET")
 	router.HandleFunc("/products/{id}", handlers.UpdateProduct).Methods("PUT")
 	router.HandleFunc("/products/{id}", handlers.DeleteProduct).Methods("DELETE")
+	//
+	// checar a saúde do jovem
 	router.HandleFunc("/health", handlers.HealthCheck).Methods("GET")
 
-	corsHandler := handlers.CORS(
-		handlers.AllowedOrigins([]string{"http://bulletcloud.com", "http://localhost:3000"}), // adicione seus domínios
-		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
-		handlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
-	)
-
-	handler := corsHandler(router)
-
 	log.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
