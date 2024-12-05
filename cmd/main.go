@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	router := mux.NewRouter()
+	router := mux.NewRouter() 
 	
 	
 	router.HandleFunc("/products", handlers.GetAllProducts).Methods("GET")
