@@ -1,27 +1,28 @@
 package main
 
 import (
-	"log"
-	"net/http"
+    "bullet-cloud-api/internal/handlers"
+    "log"
+    "net/http"
+    "os"
 
-	"bullet-cloud-api/internal/handlers"
-
-	"github.com/gorilla/mux"
+    "github.com/gorilla/mux"
 )
 
 func main() {
-	router := mux.NewRouter()
+    r := mux.NewRouter()
+    r.HandleFunc("/health", handlers.HealthCheck).Methods("GET")
+    r.HandleFunc("/products", handlers.GetAllProducts).Methods("GET")
+    r.HandleFunc("/products", handlers.CreateProduct).Methods("POST")
+    r.HandleFunc("/products/{id}", handlers.GetProduct).Methods("GET")
+    r.HandleFunc("/products/{id}", handlers.UpdateProduct).Methods("PUT")
+    r.HandleFunc("/products/{id}", handlers.DeleteProduct).Methods("DELETE")
 
-	// essa rota deu trabalho, handlers handlers
-	router.HandleFunc("/products", handlers.GetAllProducts).Methods("GET")
-	router.HandleFunc("/products", handlers.CreateProduct).Methods("POST")
-	router.HandleFunc("/products/{id}", handlers.GetProduct).Methods("GET")
-	router.HandleFunc("/products/{id}", handlers.UpdateProduct).Methods("PUT")
-	router.HandleFunc("/products/{id}", handlers.DeleteProduct).Methods("DELETE")
-	//
-	// checar a saúde do jovem
-	router.HandleFunc("/health", handlers.HealthCheck).Methods("GET")
+    port := os.Getenv("API_PORT")
+    if port == "" {
+        port = "8080" // Porta padrão, caso não esteja definida no ambiente
+    }
 
-	log.Println("Server starting on :4444")
-	log.Fatal(http.ListenAndServe(":4444", router))
+    log.Printf("Server starting on :%s", port)
+    log.Fatal(http.ListenAndServe(":"+port, r))
 }
