@@ -1,5 +1,7 @@
 # API RESTful em Go para gerenciamento de produtos
 
+[![CodeQL Advanced](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/codeql.yml/badge.svg)](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/codeql.yml)
+
 ✨ Recursos
 <div>
 CRUD completo de produtos
