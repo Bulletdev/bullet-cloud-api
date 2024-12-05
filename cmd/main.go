@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"magalu-cloud-api/internal/handlers"
+	"bullet-cloud-api/internal/handlers"
 
 	"github.com/gorilla/mux"
 )
