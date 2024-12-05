@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"magalu-cloud-api/internal/models"
+	"bullet-cloud-api/internal/models"
 
 	"github.com/gorilla/mux"
 )
