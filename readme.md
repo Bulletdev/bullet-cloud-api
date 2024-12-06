@@ -10,7 +10,7 @@
   <img alt="Repository size" src="https://img.shields.io/github/repo-size/bulletdev/bullet-cloud-api?color=04D361&labelColor=000000">
   
   <a href="https://github.com/Bulletdev/linktree/commits/master">
-    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/Bulletdev/ShortMe?color=04D361&labelColor=000000">
+    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/bulletdev/bullet-cloud-api?color=04D361&labelColor=000000">
   </a>
 </p>
 
