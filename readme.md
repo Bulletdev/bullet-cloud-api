@@ -1,5 +1,19 @@
 # API RESTful em Go para gerenciamento de produtos
 
+<p align="center">
+  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/Bulletdev/ShortMe?color=04D361&labelColor=000000">
+  
+  <a href="https://www.linkedin.com/in/Michael-Bullet/">
+    <img alt="Made by" src="https://img.shields.io/static/v1?label=made%20by&message=Michael%20Bullet&color=04D361&labelColor=000000">
+  </a>
+  
+  <img alt="Repository size" src="https://img.shields.io/github/repo-size/bulletdev/ShortMe?color=04D361&labelColor=000000">
+  
+  <a href="https://github.com/Bulletdev/linktree/commits/master">
+    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/Bulletdev/ShortMe?color=04D361&labelColor=000000">
+  </a>
+</p>
+
 [![CodeQL Advanced](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/codeql.yml/badge.svg)](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/codeql.yml)
 
 ✨ Recursos
