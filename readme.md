@@ -1,3 +1,10 @@
+<p align="center">
+  
+[![CodeQL Advanced](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/codeql.yml/badge.svg)](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/codeql.yml)
+[![Go](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/go.yml/badge.svg)](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/go.yml)
+  
+</p>
+
 # API RESTful em Go para gerenciamento de produtos
 
 <p align="center">
@@ -12,13 +19,6 @@
   <a href="https://github.com/Bulletdev/linktree/commits/master">
     <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/bulletdev/bullet-cloud-api?color=04D361&labelColor=000000">
   </a>
-</p>
-
-<p align="center">
-  
-[![CodeQL Advanced](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/codeql.yml/badge.svg)](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/codeql.yml)
-[![Go](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/go.yml/badge.svg)](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/go.yml)
-  
 </p>
 
 ✨ Recursos
