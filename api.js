@@ -43,7 +43,7 @@ export const productService = {
     await fetch(`${API_URL}/products/${id}`, {
       method: 'DELETE',
     });
-  },
+  }, 
 };
 
 // Exemplo de componente React so pra deixar de base
