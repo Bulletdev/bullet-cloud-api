@@ -1,13 +1,11 @@
 const API_URL = 'http://localhost:8080'; //url do app, vou add dps
 
 export const productService = {
-  // Listar produtos
   async getProducts() {
     const response = await fetch(`${API_URL}/products`);
     return response.json();
   },
 
-  // Criar produto
   async createProduct(product) {
     const response = await fetch(`${API_URL}/products`, {
       method: 'POST',
@@ -19,13 +17,11 @@ export const productService = {
     return response.json();
   },
 
-  // Buscar produto por ID
   async getProduct(id) {
     const response = await fetch(`${API_URL}/products/${id}`);
     return response.json();
   },
 
-  // Atualizar produto
   async updateProduct(id, product) {
     const response = await fetch(`${API_URL}/products/${id}`, {
       method: 'PUT',
@@ -37,7 +33,6 @@ export const productService = {
     return response.json();
   },
 
-  // Deletar produto
   async deleteProduct(id) {
     await fetch(`${API_URL}/products/${id}`, {
       method: 'DELETE',
