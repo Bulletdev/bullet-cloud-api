@@ -13,15 +13,21 @@ var productRepo = models.NewProductRepository()
 
 func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+	err := json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+	if err != nil {
+		return
+	}
 }
 
 func GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	products := productRepo.GetAll()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(products)
+	err := json.NewEncoder(w).Encode(products)
+	if err != nil {
+		return
+	}
 }
-// bulletdev
+
 func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var product models.Product
 
@@ -37,7 +43,9 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(product)
+	if err := json.NewEncoder(w).Encode(product); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func GetProduct(w http.ResponseWriter, r *http.Request) {
@@ -49,9 +57,12 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-// bulletdev
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(product)
+	err = json.NewEncoder(w).Encode(product)
+	if err != nil {
+		return
+	}
 }
 
 func UpdateProduct(w http.ResponseWriter, r *http.Request) {
@@ -70,9 +81,11 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updatedProduct)
+	if err := json.NewEncoder(w).Encode(updatedProduct); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
-// bulletdev
+
 func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]

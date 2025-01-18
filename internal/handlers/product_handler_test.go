@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -14,7 +16,20 @@ func TestUpdateProduct(t *testing.T) {
 		name string
 		args args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Valid request",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: httptest.NewRequest("PUT", "/products/1", strings.NewReader(`{"name":"Updated Product"}`)),
+			},
+		},
+		{
+			name: "Invalid request",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: httptest.NewRequest("PUT", "/products/1", strings.NewReader(`{"invalid":"data"}`)),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
