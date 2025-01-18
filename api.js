@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:4444'; //url do app, vou add dps
+const API_URL = 'http://localhost:8080'; //url do app, vou add dps
 
 export const productService = {
   async getProducts() {

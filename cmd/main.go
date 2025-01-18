@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const defaultPort = "4444"
+const defaultPort = "8080"
 
 func main() {
 	r := setupRoutes()
