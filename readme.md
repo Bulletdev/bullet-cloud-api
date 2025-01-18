@@ -38,6 +38,7 @@ Tratamento seguro de concorrência
 Endpoints RESTful
 </div> 
 
+<div>
 Health check
 </div> 
 
@@ -46,11 +47,18 @@ Testes Unitários
 
 </div> 
 
+🚀 Exemplo de uso
+
+```bash
+Invoke-WebRequest -Uri http://localhost:4444/products -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"name":"Notebook Gamer","description":"Notebook para jogos","price":5999.99,"category":"Eletronicos"}'
+``` 
+
 ## demonstração: 
 
 <details>
 <img src="/demo.png">
 </details>
+
 
 🛠 Tecnologias
 

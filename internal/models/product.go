@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 )
- 
+
 type Product struct {
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
@@ -19,7 +19,7 @@ type ProductRepository struct {
 	products map[string]Product
 	counter  int
 }
-// bulletdev
+
 func NewProductRepository() *ProductRepository {
 	return &ProductRepository{
 		products: make(map[string]Product),
@@ -71,7 +71,7 @@ func (r *ProductRepository) Update(id string, updatedProduct Product) error {
 	r.products[id] = updatedProduct
 	return nil
 }
-// bulletdev
+
 func (r *ProductRepository) Delete(id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -1,21 +1,20 @@
- # Exported from Render on 2024-12-05T20:29:12Z
 services:
-- type: web  
-  name: bullet-cloud-api
-  runtime: go
-  repo: https://github.com/Bulletdev/bullet-cloud-api
-  plan: free
-  envVars:
-  - key: DbURL
-    sync: false
-  - key: CorsOrigins
-    sync: false
-  - key: Port
-    sync: false
-  - key: test
-    sync: false
-  region: ohio
-  buildCommand: go mod tidy
-  startCommand: go run cmd/main.go
-  autoDeploy: false
+  - type: web
+    name: bullet-cloud-api
+    runtime: go
+    repo: https://github.com/Bulletdev/bullet-cloud-api
+    plan: free
+    envVars:
+      - key: DbURL
+        sync: false
+      - key: CorsOrigins
+        sync: false
+      - key: Port
+        sync: false
+      - key: test
+        sync: false
+    region: ohio
+    buildCommand: go mod tidy
+    startCommand: go run cmd/main.go
+    autoDeploy: false
 version: "1"
