@@ -50,7 +50,7 @@ Testes Unitários
 🚀 Exemplo de uso
 
 ```bash
-Invoke-WebRequest -Uri http://localhost:4444/products -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"name":"Notebook Gamer","description":"Notebook para jogos","price":5999.99,"category":"Eletronicos"}'
+Invoke-WebRequest -Uri http://localhost:8080/products -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"name":"Notebook Gamer","description":"Notebook para jogos","price":5999.99,"category":"Eletronicos"}'
 ``` 
 
 ## demonstração: 

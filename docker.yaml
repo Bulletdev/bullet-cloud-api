@@ -4,7 +4,7 @@ services:
   api:
     build: .
     ports:
-      - "4444:4444"
+      - "8080:8080"
     environment:
-      - API_PORT=4444
+      - API_PORT=8080
       - CORS_ORIGINS=
