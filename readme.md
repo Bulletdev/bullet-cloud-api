@@ -53,6 +53,13 @@ Testes Unitários
 ```bash
 Invoke-WebRequest -Uri http://localhost:8080/products -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"name":"Notebook Gamer","description":"Notebook para jogos","price":5999.99,"category":"Eletronicos"}'
 ``` 
+# Documentação da API
+
+Para acessar a documentação completa da API, clique no link abaixo:
+
+[Documentação da API no Swagger](https://app.swaggerhub.com/apis/bulletcloud/Estoque/1.1) <!-- new tab link -->
+
+
 
 ## demonstração: 
 
