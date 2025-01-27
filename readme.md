@@ -57,7 +57,7 @@ Invoke-WebRequest -Uri http://localhost:8080/products -Method POST -Headers @{"C
 
 Para acessar a documentação completa da API, clique no link abaixo:
 
-[Documentação da API no Swagger](https://app.swaggerhub.com/apis-docs/bulletcloud/Estoque/1.1) <!-- new tab link -->
+[Documentação da API no Swagger](https://app.swaggerhub.com/apis-docs/bulletcloud/Estoque/1.1) <! -- CTRL + click para abrir em nova aba -->
 
 
 
