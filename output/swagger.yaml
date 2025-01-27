@@ -1,0 +1,326 @@
+{
+  "openapi" : "3.0.0",
+  "info" : {
+    "title" : "API de Produtos",
+    "description" : "Esta API permite criar, listar, buscar, atualizar e deletar produtos.\nTambém possui um endpoint para verificar o status da aplicação.\n",
+    "version" : "1.1"
+  },
+  "servers" : [ {
+    "url" : "http://localhost:8080",
+    "description" : "Servidor local de desenvolvimento"
+  } ],
+  "paths" : {
+    "/health" : {
+      "get" : {
+        "summary" : "Verificar status da aplicação",
+        "description" : "Retorna o status de saúde da aplicação.",
+        "responses" : {
+          "200" : {
+            "description" : "Status da aplicação",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/inline_response_200"
+                },
+                "examples" : {
+                  "healthCheck" : {
+                    "summary" : "Exemplo de resposta",
+                    "value" : {
+                      "status" : "healthy",
+                      "timestamp" : "2025-01-26T23:59:00Z",
+                      "version" : "1.0.0"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products" : {
+      "get" : {
+        "summary" : "Listar todos os produtos",
+        "description" : "Retorna uma lista de todos os produtos disponíveis.",
+        "responses" : {
+          "200" : {
+            "description" : "Lista de produtos",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/Product"
+                  }
+                },
+                "examples" : {
+                  "produtosExemplo" : {
+                    "summary" : "Exemplo de resposta",
+                    "value" : [ {
+                      "id" : "1",
+                      "nome" : "Notebook Gamer",
+                      "preço" : 5999.99,
+                      "descrição" : "Notebook para jogos",
+                      "categoria" : "Eletrônicos"
+                    }, {
+                      "id" : "2",
+                      "nome" : "Smartphone",
+                      "preço" : 2999.99,
+                      "descrição" : "Smartphone de última geração",
+                      "categoria" : "Eletrônicos"
+                    } ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "summary" : "Criar produto",
+        "description" : "Cria um novo produto.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProductInput"
+              },
+              "examples" : {
+                "produtoExemplo" : {
+                  "summary" : "Exemplo de corpo da requisição",
+                  "value" : {
+                    "nome" : "Notebook Gamer",
+                    "preço" : 5999.99,
+                    "descrição" : "Notebook para jogos",
+                    "categoria" : "Eletrônicos"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Produto criado",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Product"
+                },
+                "examples" : {
+                  "produtoCriado" : {
+                    "summary" : "Exemplo de resposta",
+                    "value" : {
+                      "id" : "3",
+                      "nome" : "Notebook Gamer",
+                      "preço" : 5999.99,
+                      "descrição" : "Notebook para jogos",
+                      "categoria" : "Eletrônicos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples" : [ {
+          "lang" : "PowerShell",
+          "source" : "Invoke-WebRequest -Uri http://localhost:8080/products -Method POST -Headers @{\"Content-Type\"=\"application/json\"} -Body '{\"nome\":\"Notebook Gamer\",\"descrição\":\"Notebook para jogos\",\"preço\":5999.99,\"categoria\":\"Eletrônicos\"}'\n"
+        } ]
+      }
+    },
+    "/products/{id}" : {
+      "get" : {
+        "summary" : "Buscar produto específico",
+        "description" : "Retorna as informações de um produto específico pelo seu ID.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID do produto",
+          "required" : true,
+          "style" : "simple",
+          "explode" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Informações do produto",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Product"
+                },
+                "examples" : {
+                  "produtoExemplo" : {
+                    "summary" : "Exemplo de resposta",
+                    "value" : {
+                      "id" : "1",
+                      "nome" : "Notebook Gamer",
+                      "preço" : 5999.99,
+                      "descrição" : "Notebook para jogos",
+                      "categoria" : "Eletrônicos"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Produto não encontrado"
+          }
+        },
+        "x-codeSamples" : [ {
+          "lang" : "PowerShell",
+          "source" : "Invoke-WebRequest -Uri http://localhost:8080/products/{id} -Method GET -Headers @{\"Content-Type\"=\"application/json\"}\n"
+        } ]
+      },
+      "put" : {
+        "summary" : "Atualizar produto",
+        "description" : "Atualiza as informações de um produto específico pelo seu ID.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID do produto",
+          "required" : true,
+          "style" : "simple",
+          "explode" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProductInput"
+              },
+              "examples" : {
+                "produtoAtualizado" : {
+                  "summary" : "Exemplo de corpo da requisição",
+                  "value" : {
+                    "nome" : "Notebook Gamer Atualizado",
+                    "preço" : 6499.99,
+                    "descrição" : "Notebook para jogos atualizado",
+                    "categoria" : "Eletrônicos"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Produto atualizado",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Product"
+                },
+                "examples" : {
+                  "produtoAtualizado" : {
+                    "summary" : "Exemplo de resposta",
+                    "value" : {
+                      "id" : "1",
+                      "nome" : "Notebook Gamer Atualizado",
+                      "preço" : 6499.99,
+                      "descrição" : "Notebook para jogos atualizado",
+                      "categoria" : "Eletrônicos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples" : [ {
+          "lang" : "PowerShell",
+          "source" : "Invoke-WebRequest -Uri http://localhost:8080/products/{id} -Method PUT -Headers @{\"Content-Type\"=\"application/json\"} -Body '{\"nome\":\"Notebook Gamer Atualizado\",\"descrição\":\"Notebook para jogos atualizado\",\"preço\":6499.99,\"categoria\":\"Eletrônicos\"}'\n"
+        } ]
+      },
+      "delete" : {
+        "summary" : "Deletar produto",
+        "description" : "Deleta um produto específico pelo seu ID.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID do produto",
+          "required" : true,
+          "style" : "simple",
+          "explode" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Produto deletado"
+          }
+        },
+        "x-codeSamples" : [ {
+          "lang" : "PowerShell",
+          "source" : "Invoke-WebRequest -Uri http://localhost:8080/products/{id} -Method DELETE -Headers @{\"Content-Type\"=\"application/json\"}\n"
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Product" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "nome" : {
+            "type" : "string"
+          },
+          "preço" : {
+            "type" : "number"
+          },
+          "descrição" : {
+            "type" : "string"
+          },
+          "categoria" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ProductInput" : {
+        "type" : "object",
+        "properties" : {
+          "nome" : {
+            "type" : "string"
+          },
+          "preço" : {
+            "type" : "number"
+          },
+          "descrição" : {
+            "type" : "string"
+          },
+          "categoria" : {
+            "type" : "string"
+          }
+        }
+      },
+      "inline_response_200" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      }
+    }
+  }
+}
