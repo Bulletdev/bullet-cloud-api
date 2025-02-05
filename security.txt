@@ -3,7 +3,7 @@ func authMiddleware(next http.Handler) http.Handler {
         token := r.Header.Get("Authorization")
         if !isValidToken(token) {
             http.Error(w, "Unauthorized", http.StatusUnauthorized)
-            return
+            return 
         }
         next.ServeHTTP(w, r)
     })
