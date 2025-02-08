@@ -27,7 +27,7 @@ CRUD completo de produtos
 </div> 
   
 <div> 
-Armazenamento in-memory
+Armazenamento in-memory 
 </div> 
 
 <div>
