@@ -64,7 +64,7 @@ Para acessar a documentação completa da API, clique no link abaixo:
 ## demonstração: 
 
 <details>
-<img src="/demo.png">
+<img src="/public/teste2.jpeg">
 </details>
 
 
@@ -129,7 +129,7 @@ GET /health: Verificar status da aplicação
 🧪 Test
 
 <details>
-<img src="/teste-ok.png">
+<img src="/public/demo2.png">
 </details>
 
 ```bash
