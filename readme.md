@@ -24,7 +24,7 @@
 ✨ Recursos
 <div>
 CRUD completo de produtos
-</div> 
+</div>  
   
 <div> 
 Armazenamento in-memory 
