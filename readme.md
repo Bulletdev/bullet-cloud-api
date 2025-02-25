@@ -23,7 +23,7 @@
 
 ✨ Recursos
 <div>
-CRUD completo de produtos
+CRUD completo de produtos 
 </div>  
   
 <div> 
