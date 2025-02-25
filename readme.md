@@ -53,12 +53,12 @@ Testes Unitários
  Windows: 
  
 ```bash
-Invoke-WebRequest -Uri http://localhost:8080/products -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"name":"Notebook Gamer","description":"Notebook para jogos","price":5999.99,"category":"Eletronicos"}'
+Invoke-WebRequest -Uri http://localhost:4444/products -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"name":"Notebook Gamer","description":"Notebook para jogos","price":5999.99,"category":"Eletronicos"}'
 ```
 No linux: 
 
 ```bash
-curl -X POST http://localhost:8080/products \
+curl -X POST http://localhost:4444/products \
 -H "Content-Type: application/json" \
 -d '{"name":"Notebook Gamer","description":"Notebook para jogos","price":5999.99,"category":"Eletronicos"}'
 ```
