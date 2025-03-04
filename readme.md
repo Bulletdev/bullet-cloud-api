@@ -8,7 +8,7 @@
 # API RESTful em Go para gerenciamento de produtos     
 
 <p align="center">
-  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/Bulletdev/bullet-cloud-api?color=04D361&labelColor=000000">
+  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/Bulletdev/bullet-cloud-api?color=04D361&labelColor=000000"> 
   
   <a href="https://www.linkedin.com/in/Michael-Bullet/">
     <img alt="Made by" src="https://img.shields.io/static/v1?label=made%20by&message=Michael%20Bullet&color=04D361&labelColor=000000">
