@@ -1,7 +1,7 @@
 const API_URL = 'http://localhost:8080'; //url do app, vou add dps
 
 export const productService = {
-  async getProducts() {
+  async getProducts() { 
     const response = await fetch(`${API_URL}/products`);
     return response.json();
   },
