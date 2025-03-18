@@ -21,7 +21,7 @@
   </a>
 </p>
 
-✨ Recursos
+# ✨ Recursos
 <div>
 CRUD completo de produtos 
 </div>  
@@ -62,7 +62,7 @@ curl -X POST http://localhost:4444/products \
 -H "Content-Type: application/json" \
 -d '{"name":"Notebook Gamer","description":"Notebook para jogos","price":5999.99,"category":"Eletronicos"}'
 ```
-# Documentação da API
+## Documentação da API
 
 Para acessar a documentação completa da API, clique no link abaixo:
 
@@ -77,7 +77,7 @@ Para acessar a documentação completa da API, clique no link abaixo:
 </details>
 
 
-🛠 Tecnologias
+## 🛠 Tecnologias
 
 <div>
 Golang
@@ -117,7 +117,7 @@ go run cmd/main.go
 
 
 
-🔍 Endpoints
+## 🔍 Endpoints
 
 <div>
   
@@ -135,7 +135,7 @@ GET /health: Verificar status da aplicação
 
 </div> 
 
-🧪 Test
+## 🧪 Test
 
 <details>
 <img src="/public/demo2.png">
