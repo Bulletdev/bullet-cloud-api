@@ -7,7 +7,7 @@
 <img src="https://img.shields.io/badge/status-Produção-Blue"> 
 </p>     
    
-# API RESTful em Go para gerenciamento de produtos      
+# API RESTful em Go para gerenciamento de produtos       
  
 <p align="center">
   <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/Bulletdev/bullet-cloud-api?color=04D361&labelColor=000000"> 
