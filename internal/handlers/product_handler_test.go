@@ -182,7 +182,7 @@ func generateTestToken(userID uuid.UUID, secret string) string {
 }
 
 func TestProductHandler_CreateProduct(t *testing.T) {
-	mockProductRepo, mockUserRepo, _, authMiddleware, router := setupProductTest(t)
+	mockProductRepo, mockUserRepo, _, _, router := setupProductTest(t)
 	testUserID := uuid.New()
 	testJwtSecret := "test-secret-for-jwt-please-change"
 	testToken := generateTestToken(testUserID, testJwtSecret)
