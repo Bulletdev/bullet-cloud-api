@@ -60,12 +60,9 @@ func main() {
 	r := setupRoutes(authHandler, userHandler, productHandler, categoryHandler, cartHandler, orderHandler, authMiddleware)
 
 	// --- Determine Port ---
-	port := os.Getenv("PORT") // 1. Check Render's PORT variable
+	port := os.Getenv("PORT") // 1. Check Render's/Environment PORT variable
 	if port == "" {
-		port = cfg.APIPort // 2. Check API_PORT from config (read from .env)
-		if port == "" {
-			port = defaultPort // 3. Use default if none is set
-		}
+		port = defaultPort // 2. Use default if PORT is not set
 	}
 	// Basic validation (optional but recommended)
 	if _, err := strconv.Atoi(port); err != nil {
