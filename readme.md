@@ -4,10 +4,10 @@
 [![Go](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/go.yml/badge.svg)](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/go.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Bulletdev_Arremate-certo&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Bulletdev_Arremate-certo)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Bulletdev_Arremate-certo&metric=bugs)](https://sonarcloud.io/summary/new_code?id=Bulletdev_Arremate-certo)
-<img src="https://img.shields.io/badge/status-Produção-Orange"> 
+<img src="https://img.shields.io/badge/status-Em%20Desenvolvimento-Orange"> 
 </p>     
    
-# API RESTful em Go para E-commerce
+# API RESTful em Go para E-commerce (Bullet Cloud API)
  
 <p align="center"> 
   <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/Bulletdev/bullet-cloud-api?color=04D361&labelColor=000000">  
@@ -31,6 +31,12 @@ Autenticação e Gerenciamento de Usuários (Registro, Login, Dados do Usuário,
 Gerenciamento de Produtos e Categorias
 </div>
 <div>
+Carrinho de Compras
+</div>
+<div>
+Gerenciamento de Pedidos (Criação e Listagem)
+</div>
+<div>
 Armazenamento de dados com PostgreSQL (via Supabase)
 </div> 
 <div>
@@ -43,10 +49,10 @@ Endpoints RESTful com prefixo `/api`
 Health check
 </div> 
 <div> 
-Testes Unitários (Existentes/Planejados)
+Testes Unitários para Handlers (Auth, User/Address, Product, Category, Cart)
 </div> 
 <div>
-*Planejado:* Carrinho, Pedidos, Frete, Paginação, Filtros, Validação Avançada, Permissões (Admin)
+*Planejado:* Testes para OrderHandler, Testes de Integração, Lógica de Frete, Paginação, Filtros, Validação Avançada, Permissões (Admin), Documentação Swagger completa.
 </div>
 
 ## 🚀 Exemplo de uso
@@ -61,8 +67,8 @@ Invoke-RestMethod -Uri http://localhost:4444/api/auth/register -Method POST -Con
 ```
 *Linux/macOS (curl):*
 ```bash
-curl -X POST http://localhost:4444/api/auth/register \
--H "Content-Type: application/json" \
+curl -X POST http://localhost:4444/api/auth/register \\
+-H "Content-Type: application/json" \\
 -d '{"name":"Nome Sobrenome","email":"email@exemplo.com","password":"senha123"}'
 ```
 
@@ -73,30 +79,59 @@ curl -X POST http://localhost:4444/api/auth/register \
 $response = Invoke-RestMethod -Uri http://localhost:4444/api/auth/login -Method POST -ContentType "application/json" -Body '{"email":"email@exemplo.com","password":"senha123"}'
 $token = $response.token
 Write-Host "Token JWT: $token"
+# Você precisará extrair o USER_ID do token ou de /api/users/me para os próximos exemplos
 ```
 *Linux/macOS (curl) (requer `jq` para extrair o token):*
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:4444/api/auth/login \
--H "Content-Type: application/json" \
+TOKEN=$(curl -s -X POST http://localhost:4444/api/auth/login \\
+-H "Content-Type: application/json" \\
 -d '{"email":"email@exemplo.com","password":"senha123"}' | jq -r .token)
 echo "Token JWT: $TOKEN"
+# Você precisará extrair o USER_ID do token ou de /api/users/me para os próximos exemplos
+# Ex: USER_ID=$(curl -s -H "Authorization: Bearer $TOKEN" http://localhost:4444/api/users/me | jq -r .id)
 ```
 
 **Adicionar um endereço (requer token):**
 
 *Linux/macOS (curl) (assumindo que USER_ID e TOKEN estão definidos):*
 ```bash
-curl -X POST http://localhost:4444/api/users/$USER_ID/addresses \
--H "Authorization: Bearer $TOKEN" \
--H "Content-Type: application/json" \
+curl -X POST http://localhost:4444/api/users/$USER_ID/addresses \\
+-H "Authorization: Bearer $TOKEN" \\
+-H "Content-Type: application/json" \\
 -d '{"street":"Rua Exemplo, 123","city":"Cidade","state":"SP","postal_code":"12345-678","country":"Brasil","is_default":true}'
 ```
 
+**Adicionar item ao carrinho (requer token):**
+
+*Linux/macOS (curl) (assumindo que PRODUCT_ID e TOKEN estão definidos):*
+```bash
+curl -X POST http://localhost:4444/api/cart/items \\
+-H "Authorization: Bearer $TOKEN" \\
+-H "Content-Type: application/json" \\
+-d '{"product_id":"'$PRODUCT_ID'","quantity":2}'
+```
+
+**Ver carrinho (requer token):**
+
+*Linux/macOS (curl) (assumindo que TOKEN está definido):*
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:4444/api/cart
+```
+
+**Criar pedido do carrinho (requer token):**
+
+*Linux/macOS (curl) (assumindo que TOKEN está definido):*
+```bash
+curl -X POST http://localhost:4444/api/orders \\
+-H "Authorization: Bearer $TOKEN"
+```
+
+
 ## Documentação da API (Planejada)
 
-(A documentação Swagger existente pode estar desatualizada. Será atualizada conforme a API evolui.)
+(A documentação Swagger existente (`swagger.yaml`) está desatualizada. Será atualizada conforme a API evolui.)
 
-[Documentação da API no Swagger](https://app.swaggerhub.com/apis-docs/bulletcloud/Estoque/1.1) 
+[Link para Documentação Swagger Antiga (Desatualizada)](https://app.swaggerhub.com/apis-docs/bulletcloud/Estoque/1.1) 
 
 
 ## 🛠 Tecnologias
@@ -111,16 +146,19 @@ Gorilla Mux
 PostgreSQL (via Supabase)
 </div>
 <div>
-pgx (Driver PostgreSQL)
+pgx/v5 (Driver PostgreSQL)
 </div>
 <div>
-JWT (github.com/golang-jwt/jwt/v5)
+golang-jwt/jwt/v5 (Autenticação JWT)
 </div>
 <div>
-bcrypt (Hashing de Senha)
+golang.org/x/crypto/bcrypt (Hashing de Senha)
 </div>
 <div>
 golang-migrate/migrate (Migrações de Banco de Dados)
+</div>
+<div>
+stretchr/testify (Testes Unitários)
 </div>
 
 
@@ -128,7 +166,7 @@ golang-migrate/migrate (Migrações de Banco de Dados)
 
 **Pré-requisitos**
 
-*   Go (versão especificada no `go.mod`, ex: 1.21+)
+*   Go (versão especificada no `go.mod`, ex: 1.22+)
 *   Git
 *   Docker (Opcional, para rodar banco localmente se não usar Supabase)
 *   [golang-migrate/migrate CLI](https://github.com/golang-migrate/migrate/tree/master/cmd/migrate) (Instalada e no PATH)
@@ -145,11 +183,14 @@ golang-migrate/migrate (Migrações de Banco de Dados)
     *   Adicione as seguintes variáveis, substituindo pelos seus valores:
         ```env
         # URL de conexão do seu banco PostgreSQL (ex: Supabase)
-        DATABASE_URL=postgres://usuario:senha@host:porta/database?sslmode=require
+        DATABASE_URL="postgres://usuario:senha@host:porta/database?sslmode=require"
         
         # Segredo para assinar os tokens JWT (obtenha do Supabase ou gere um seguro)
-        JWT_SECRET=seu_segredo_super_seguro_aqui 
+        JWT_SECRET="seu_segredo_super_seguro_aqui"
         
+        # Tempo de expiração do token JWT (opcional, padrão 1h)
+        # JWT_EXPIRY_HOURS=1 
+
         # Porta da API (opcional, padrão 4444)
         # API_PORT=4444 
         ```
@@ -157,7 +198,7 @@ golang-migrate/migrate (Migrações de Banco de Dados)
 3.  **Instalar Dependências:**
     ```bash
     go mod tidy
-    go mod vendor # Se estiver usando vendoring
+    go mod vendor # Opcional, se estiver usando vendoring
     ```
 4.  **Aplicar Migrações do Banco:**
     *   Certifique-se que a CLI `migrate` está instalada.
@@ -184,92 +225,112 @@ golang-migrate/migrate (Migrações de Banco de Dados)
 
 **Autenticação**
 *   `POST /api/auth/register`: Registra um novo usuário.
-    *   **Corpo da Requisição:**
-        ```json
-        {
-          "name": "Nome Completo",
-          "email": "usuario@exemplo.com",
-          "password": "senhaSegura123"
-        }
-        ```
-    *   **Resposta Sucesso (201 Created):** Retorna o objeto do usuário criado (sem o hash da senha).
-        ```json
-        {
-          "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
-          "name": "Nome Completo",
-          "email": "usuario@exemplo.com",
-          "created_at": "2023-10-27T10:00:00Z",
-          "updated_at": "2023-10-27T10:00:00Z"
-        }
-        ```
-    *   **Respostas de Erro:**
-        *   `400 Bad Request`: Corpo inválido, campos faltando.
-        *   `409 Conflict`: Email já registrado.
-        *   `500 Internal Server Error`: Falha ao criar usuário.
-*   `POST /api/auth/login`: Autentica um usuário e retorna um token JWT.
-    *   **Corpo da Requisição:**
-        ```json
-        {
-          "email": "usuario@exemplo.com",
-          "password": "senhaSegura123"
-        }
-        ```
-    *   **Resposta Sucesso (200 OK):** Retorna o token JWT.
-        ```json
-        {
-          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        }
-        ```
-    *   **Respostas de Erro:**
-        *   `400 Bad Request`: Corpo inválido, campos faltando.
-        *   `401 Unauthorized`: Email ou senha inválidos.
-        *   `500 Internal Server Error`: Falha ao gerar token.
+    *   **Corpo:** `{"name": "...", "email": "...", "password": "..."}`
+    *   **Sucesso (201):** Objeto `User` (sem senha).
+    *   **Erros:** `400` (inválido), `409` (email existe), `500`.
+*   `POST /api/auth/login`: Autentica um usuário.
+    *   **Corpo:** `{"email": "...", "password": "..."}`
+    *   **Sucesso (200):** `{"token": "jwt_token"}`.
+    *   **Erros:** `400`, `401` (inválido), `500`.
 
 **Usuários**
+*   `GET /api/users/me` (Protegido): Retorna informações do usuário autenticado (obtido do token).
+    *   **Sucesso (200):** Objeto `User` (sem senha).
+    *   **Erros:** `401` (sem token/inválido), `500`.
 
-*   `GET /api/users/me` (Protegido): Retorna informações do usuário autenticado.
-*   `GET /api/users/{userId}/addresses` (Protegido): Lista endereços do usuário especificado.
-*   `POST /api/users/{userId}/addresses` (Protegido): Adiciona um novo endereço para o usuário.
-*   `PUT /api/users/{userId}/addresses/{addressId}` (Protegido): Atualiza um endereço existente do usuário.
-*   `DELETE /api/users/{userId}/addresses/{addressId}` (Protegido): Remove um endereço do usuário.
-*   `PATCH /api/users/{userId}/addresses/{addressId}/default` (Protegido): Define um endereço como padrão.
+**Endereços** (Rotas aninhadas sob `/api/users/{userId}`)
+*   `GET /api/users/{userId}/addresses` (Protegido): Lista endereços do usuário `{userId}`. *Requer que `{userId}` seja o mesmo do token.*
+    *   **Sucesso (200):** Array de objetos `Address`.
+    *   **Erros:** `401`, `403` (outro usuário), `404` (usuário inválido na URL), `500`.
+*   `POST /api/users/{userId}/addresses` (Protegido): Adiciona um novo endereço para o usuário `{userId}`. *Requer que `{userId}` seja o mesmo do token.*
+    *   **Corpo:** `{"street": "...", "city": "...", "state": "...", "postal_code": "...", "country": "...", "is_default": boolean (opcional)}`
+    *   **Sucesso (201):** Objeto `Address` criado.
+    *   **Erros:** `400` (inválido), `401`, `403`, `404`, `500`.
+*   `PUT /api/users/{userId}/addresses/{addressId}` (Protegido): Atualiza o endereço `{addressId}` do usuário `{userId}`. *Requer que `{userId}` seja o mesmo do token.*
+    *   **Corpo:** `{"street": "...", "city": "...", "state": "...", "postal_code": "...", "country": "...", "is_default": boolean (opcional)}`
+    *   **Sucesso (200):** Objeto `Address` atualizado.
+    *   **Erros:** `400`, `401`, `403`, `404` (usuário/endereço inválido ou não encontrado), `500`.
+*   `DELETE /api/users/{userId}/addresses/{addressId}` (Protegido): Remove o endereço `{addressId}` do usuário `{userId}`. *Requer que `{userId}` seja o mesmo do token.*
+    *   **Sucesso (204):** Sem conteúdo.
+    *   **Erros:** `401`, `403`, `404`, `500`.
+*   `POST /api/users/{userId}/addresses/{addressId}/default` (Protegido): Define o endereço `{addressId}` como padrão para o usuário `{userId}`. *Requer que `{userId}` seja o mesmo do token.*
+    *   **Sucesso (200):** Sem conteúdo explícito (OK).
+    *   **Erros:** `401`, `403`, `404`, `500`.
 
 **Produtos**
 *   `GET /api/products`: Lista todos os produtos.
-*   `GET /api/products/{id}`: Busca um produto específico.
+    *   **Sucesso (200):** Array de objetos `Product`.
+*   `GET /api/products/{id}`: Busca um produto específico pelo ID.
+    *   **Sucesso (200):** Objeto `Product`.
+    *   **Erros:** `400` (ID inválido), `404` (não encontrado), `500`.
 *   `POST /api/products` (Protegido): Cria um novo produto.
+    *   **Corpo:** `{"name": "...", "description": "..." (opcional), "price": 123.45, "category_id": "uuid" (opcional)}`
+    *   **Sucesso (201):** Objeto `Product` criado.
+    *   **Erros:** `400` (inválido), `401`, `500`.
 *   `PUT /api/products/{id}` (Protegido): Atualiza um produto existente.
+    *   **Corpo:** `{"name": "...", "description": "..." (opcional), "price": 123.45, "category_id": "uuid" (opcional)}`
+    *   **Sucesso (200):** Objeto `Product` atualizado.
+    *   **Erros:** `400`, `401`, `404`, `500`.
 *   `DELETE /api/products/{id}` (Protegido): Deleta um produto.
+    *   **Sucesso (204):** Sem conteúdo.
+    *   **Erros:** `401`, `404`, `500`.
 
 **Categorias**
 *   `GET /api/categories`: Lista todas as categorias.
-*   `GET /api/categories/{id}`: Busca uma categoria específica.
+    *   **Sucesso (200):** Array de objetos `Category`.
+*   `GET /api/categories/{id}`: Busca uma categoria específica pelo ID.
+    *   **Sucesso (200):** Objeto `Category`.
+    *   **Erros:** `400`, `404`, `500`.
 *   `POST /api/categories` (Protegido): Cria uma nova categoria.
+    *   **Corpo:** `{"name": "..."}`
+    *   **Sucesso (201):** Objeto `Category` criado.
+    *   **Erros:** `400`, `401`, `409` (nome existe), `500`.
 *   `PUT /api/categories/{id}` (Protegido): Atualiza uma categoria existente.
+    *   **Corpo:** `{"name": "..."}`
+    *   **Sucesso (200):** Objeto `Category` atualizado.
+    *   **Erros:** `400`, `401`, `404`, `409`, `500`.
 *   `DELETE /api/categories/{id}` (Protegido): Deleta uma categoria.
+    *   **Sucesso (204):** Sem conteúdo.
+    *   **Erros:** `401`, `404`, `500`.
 
-**Carrinho de Compras**
-*   `GET /api/cart` (Protegido): Recupera o carrinho atual do usuário.
-*   `POST /api/cart/items` (Protegido): Adiciona item ao carrinho (ou incrementa quantidade).
-*   `PUT /api/cart/items/{productId}` (Protegido): Atualiza a quantidade de um item no carrinho.
-*   `DELETE /api/cart/items/{productId}` (Protegido): Remove um item do carrinho.
-*   `DELETE /api/cart` (Protegido): Limpa todos os itens do carrinho.
+**Carrinho de Compras** (Operações no carrinho do usuário autenticado)
+*   `GET /api/cart` (Protegido): Recupera o carrinho atual do usuário (cria um se não existir).
+    *   **Sucesso (200):** Objeto `{"cart": {...}, "items": [{...}]}` (Items pode ser vazio).
+    *   **Erros:** `401`, `500`.
+*   `POST /api/cart/items` (Protegido): Adiciona um item ao carrinho (ou incrementa quantidade se já existir).
+    *   **Corpo:** `{"product_id": "uuid", "quantity": int}`
+    *   **Sucesso (200):** Objeto `{"cart": {...}, "items": [{...}]}` atualizado.
+    *   **Erros:** `400` (inválido/qtde<=0), `401`, `404` (produto não existe), `500`.
+*   `PUT /api/cart/items/{productId}` (Protegido): Atualiza a quantidade de um item específico (`productId`) no carrinho. *Se quantidade for 0 ou menor, remove o item.*
+    *   **Corpo:** `{"quantity": int}`
+    *   **Sucesso (200):** Objeto `{"cart": {...}, "items": [{...}]}` atualizado.
+    *   **Erros:** `400`, `401`, `404` (item/produto não encontrado), `500`.
+*   `DELETE /api/cart/items/{productId}` (Protegido): Remove um item específico (`productId`) do carrinho.
+    *   **Sucesso (200):** Objeto `{"cart": {...}, "items": [{...}]}` atualizado.
+    *   **Erros:** `401`, `404` (item/produto não encontrado), `500`.
+*   `DELETE /api/cart` (Protegido): Limpa *todos* os itens do carrinho do usuário.
+    *   **Sucesso (200):** Objeto `{"cart": {...}, "items": []}` (Carrinho vazio).
+    *   **Erros:** `401`, `500`.
 
 **Pedidos**
-*   `POST /api/orders` (Protegido): Cria um novo pedido a partir do carrinho atual.
+*   `POST /api/orders` (Protegido): Cria um novo pedido a partir dos itens no carrinho atual do usuário. *Limpa o carrinho após criar o pedido.*
+    *   **Sucesso (201):** Objeto `{"order": {...}, "items": [{...}]}` do pedido criado.
+    *   **Erros:** `400` (carrinho vazio), `401`, `500`.
 *   `GET /api/orders` (Protegido): Lista os pedidos do usuário autenticado.
-*   `GET /api/orders/{id}` (Protegido): Busca os detalhes de um pedido específico.
-*   `PATCH /api/orders/{id}/cancel` (Protegido): Cancela um pedido (se o status permitir).
+    *   **Sucesso (200):** Array de objetos `Order`.
+    *   **Erros:** `401`, `500`.
+*   `GET /api/orders/{id}` (Protegido): Busca os detalhes de um pedido específico (`id`). *Só permite buscar próprios pedidos.*
+    *   **Sucesso (200):** Objeto `{"order": {...}, "items": [{...}]}`.
+    *   **Erros:** `401`, `403` (não é dono), `404` (pedido não encontrado/ID inválido), `500`.
 
-*(Frete será adicionado futuramente)*
+*(Funcionalidades de Pedidos como cancelamento e atualização de status foram implementadas no repositório mas não expostas em rotas ainda).*
 
 
-## 🧪 Test
+## 🧪 Testes
 
-(Instruções de teste podem precisar de atualização)
-
+Para rodar os testes unitários dos handlers:
 ```bash
-go test ./...
+go test -v ./internal/handlers/...
 ```
 
 📄 Licença

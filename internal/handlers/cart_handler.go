@@ -121,14 +121,14 @@ func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add or update the item in the repository
-	_, err = h.CartRepo.AddItem(r.Context(), userCart.ID, req.ProductID, req.Quantity, product.Price)
+	cartItem, err := h.CartRepo.AddItem(r.Context(), userCart.ID, req.ProductID, req.Quantity, product.Price)
 	if err != nil {
 		webutils.ErrorJSON(w, errors.New("failed to add item to cart"), http.StatusInternalServerError)
 		return
 	}
 
-	// Return the updated cart content
-	h.GetCart(w, r)
+	// Return 201 Created on success
+	webutils.WriteJSON(w, http.StatusCreated, cartItem)
 }
 
 // UpdateItem handles PUT /api/cart/items/{productId}

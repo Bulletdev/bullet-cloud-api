@@ -1,15 +1,13 @@
 package handlers_test
 
 import (
-	"bullet-cloud-api/internal/auth"
 	"bullet-cloud-api/internal/handlers"
 	"bullet-cloud-api/internal/models"
 	"bullet-cloud-api/internal/users"
-	"context"
-	"errors"
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -17,304 +15,328 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // setupAuthTest sets up mocks, handler, and router for auth tests.
-func setupAuthTest(t *testing.T) (*users.MockUserRepository, *handlers.AuthHandler, *mux.Router) {
-	// Use the base setup for common parts (user mock, middleware, router)
-	mockUserRepo, _, router := setupBaseTest(t)
+// func setupAuthTest(t *testing.T) (*users.MockUserRepository, *handlers.AuthHandler, *mux.Router) {
+// 	// Use the base setup for common parts (user mock, middleware, router)
+// 	mockUserRepo, _, router, _, _, _, _, _, _ := setupBaseTest(t) // Corrected assignment
+//
+// 	// Instantiate the real password hasher
+// 	hasher := auth.NewBcryptPasswordHasher() // Use real hasher or MockPasswordHasher if preferred
+//
+// 	// Provide test JWT configuration
+// 	testJwtExpiry := time.Hour * 1 // Example expiry for tests
+//
+// 	// Create the AuthHandler, now passing the hasher, secret and expiry
+// 	authHandler := handlers.NewAuthHandler(mockUserRepo, hasher, testJwtSecret, testJwtExpiry)
+//
+// 	// Define routes handled by AuthHandler (no middleware needed for these)
+// 	apiV1 := router.PathPrefix("/api/auth").Subrouter()
+// 	apiV1.HandleFunc("/register", authHandler.Register).Methods("POST")
+// 	apiV1.HandleFunc("/login", authHandler.Login).Methods("POST")
+//
+// 	return mockUserRepo, authHandler, router
+// }
+// NOTE: setupAuthTest is removed as setup now happens inside each test for better isolation
+// and mock control.
 
-	// Instantiate the real password hasher
-	hasher := auth.NewBcryptPasswordHasher()
+func TestAuthHandler_Register(t *testing.T) {
+	// User details
+	userName := "Test User"
+	userEmail := "test@example.com"
+	userPassword := "password123"
+	hashedPassword := "hashed_password_string"
+	createdUser := &models.User{ID: uuid.New(), Name: userName, Email: userEmail}
 
-	// Provide test JWT configuration
-	testJwtSecret := "test-secret-for-jwt-please-change"
-	testJwtExpiry := time.Hour * 1 // Example expiry for tests
-
-	// Create the AuthHandler, now passing the hasher
-	authHandler := handlers.NewAuthHandler(mockUserRepo, hasher, testJwtSecret, testJwtExpiry)
-
-	// Define routes handled by AuthHandler (no middleware needed for these)
-	apiV1 := router.PathPrefix("/api/auth").Subrouter()
-	apiV1.HandleFunc("/register", authHandler.Register).Methods("POST")
-	apiV1.HandleFunc("/login", authHandler.Login).Methods("POST")
-
-	return mockUserRepo, authHandler, router
-}
-
-// Placeholder for TestAuthHandler_RegisterHandler
-func TestAuthHandler_RegisterHandler(t *testing.T) {
 	tests := []struct {
-		name               string
-		body               string
-		mockFindByEmailErr error // Error returned by FindByEmail
-		mockCreateErr      error // Error returned by Create
-		expectedStatus     int
-		expectedBody       string
+		name string
+		body string
+		// These functions configure the mocks created *inside* t.Run
+		mockHashPassword    func(*MockPasswordHasher)
+		mockUserCreate      func(*MockUserRepository)
+		mockUserFindByEmail func(*MockUserRepository)
+		expectedStatus      int
+		expectedBodyRegexp  string // Use regexp for ID matching
 	}{
 		{
-			name:               "Success",
-			body:               `{"name":"Test User","email":"new@example.com","password":"password123"}`,
-			mockFindByEmailErr: users.ErrUserNotFound, // Expect user NOT to be found
-			mockCreateErr:      nil,
+			name: "Success",
+			body: fmt.Sprintf(`{"name":"%s", "email":"%s", "password":"%s"}`, userName, userEmail, userPassword),
+			// Pass the subtest mockHasher to the setup function
+			mockHashPassword: func(hasher *MockPasswordHasher) {
+				hasher.On("HashPassword", userPassword).Return(hashedPassword, nil).Once()
+			},
+			// Pass the subtest mockUserRepo to the setup function
+			mockUserCreate: func(repo *MockUserRepository) {
+				repo.On("Create", mock.Anything, userName, userEmail, hashedPassword).Return(createdUser, nil).Once()
+			},
+			// Pass the subtest mockUserRepo to the setup function
+			mockUserFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(nil, users.ErrUserNotFound).Once()
+			},
 			expectedStatus:     http.StatusCreated,
-			expectedBody:       "new@example.com", // Check for email in response
+			expectedBodyRegexp: fmt.Sprintf(`{"id":"%s","name":"%s","email":"%s","created_at":".*","updated_at":".*"}`, createdUser.ID, userName, userEmail),
 		},
 		{
-			name:               "Failure - Invalid JSON",
-			body:               `{"name":"Test User",}`, // Malformed JSON
-			mockFindByEmailErr: nil,                     // Won't be called
-			mockCreateErr:      nil,                     // Won't be called
-			expectedStatus:     http.StatusBadRequest,
-			expectedBody:       `{"error":"invalid request body"}`,
-		},
-		{
-			name:               "Failure - Missing Name",
-			body:               `{"email":"missing@name.com","password":"password123"}`,
-			mockFindByEmailErr: nil, // Won't be called
-			mockCreateErr:      nil, // Won't be called
-			expectedStatus:     http.StatusBadRequest,
-			expectedBody:       `{"error":"name, email, and password are required"}`,
-		},
-		{
-			name:               "Failure - Missing Email",
-			body:               `{"name":"Missing Email","password":"password123"}`,
-			mockFindByEmailErr: nil, // Won't be called
-			mockCreateErr:      nil, // Won't be called
-			expectedStatus:     http.StatusBadRequest,
-			expectedBody:       `{"error":"name, email, and password are required"}`,
-		},
-		{
-			name:               "Failure - Missing Password",
-			body:               `{"name":"Missing Password","email":"missing@pass.com"}`,
-			mockFindByEmailErr: nil, // Won't be called
-			mockCreateErr:      nil, // Won't be called
-			expectedStatus:     http.StatusBadRequest,
-			expectedBody:       `{"error":"name, email, and password are required"}`,
-		},
-		{
-			name:               "Failure - Email Already Exists",
-			body:               `{"name":"Existing User","email":"existing@example.com","password":"password123"}`,
-			mockFindByEmailErr: nil, // Simulate user FOUND
-			mockCreateErr:      nil, // Won't be called
+			name: "Duplicate Email",
+			body: fmt.Sprintf(`{"name":"%s", "email":"%s", "password":"%s"}`, userName, userEmail, userPassword),
+			mockHashPassword: func(hasher *MockPasswordHasher) {
+				// No HashPassword mock needed if FindByEmail finds the user first
+			},
+			mockUserCreate: func(repo *MockUserRepository) {
+				// Create should not be called if email is found
+			},
+			mockUserFindByEmail: func(repo *MockUserRepository) {
+				// Simulate finding an existing user
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(&models.User{ID: uuid.New(), Email: userEmail}, nil).Once()
+			},
 			expectedStatus:     http.StatusConflict,
-			expectedBody:       `{"error":"email already registered"}`,
+			expectedBodyRegexp: `{"error":"email already registered"}`,
 		},
 		{
-			name:               "Failure - FindByEmail Repo Error",
-			body:               `{"name":"Repo Find Error","email":"finderr@example.com","password":"password123"}`,
-			mockFindByEmailErr: errors.New("db find error"),
-			mockCreateErr:      nil, // Won't be called
+			name: "Hashing Error",
+			body: fmt.Sprintf(`{"name":"%s", "email":"%s", "password":"%s"}`, userName, userEmail, userPassword),
+			mockHashPassword: func(hasher *MockPasswordHasher) {
+				hasher.On("HashPassword", userPassword).Return("", assert.AnError).Once()
+			},
+			mockUserCreate: func(repo *MockUserRepository) { /* Not called */ },
+			mockUserFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(nil, users.ErrUserNotFound).Once()
+			},
 			expectedStatus:     http.StatusInternalServerError,
-			expectedBody:       `{"error":"failed to check email existence"}`,
+			expectedBodyRegexp: `{"error":"failed to register user"}`,
 		},
 		{
-			name:               "Failure - Create Repo Error",
-			body:               `{"name":"Repo Create Error","email":"createerr@example.com","password":"password123"}`,
-			mockFindByEmailErr: users.ErrUserNotFound, // User not found
-			mockCreateErr:      errors.New("db create error"),
+			name: "Create User Error",
+			body: fmt.Sprintf(`{"name":"%s", "email":"%s", "password":"%s"}`, userName, userEmail, userPassword),
+			mockHashPassword: func(hasher *MockPasswordHasher) {
+				hasher.On("HashPassword", userPassword).Return(hashedPassword, nil).Once()
+			},
+			mockUserCreate: func(repo *MockUserRepository) {
+				repo.On("Create", mock.Anything, userName, userEmail, hashedPassword).Return(nil, assert.AnError).Once()
+			},
+			mockUserFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(nil, users.ErrUserNotFound).Once()
+			},
 			expectedStatus:     http.StatusInternalServerError,
-			expectedBody:       `{"error":"failed to register user"}`,
+			expectedBodyRegexp: `{"error":"failed to register user"}`,
+		},
+		{
+			name:                "Invalid JSON",
+			body:                `{"email":"test@example.com",}`, // Malformed
+			mockHashPassword:    func(hasher *MockPasswordHasher) { /* Not called */ },
+			mockUserCreate:      func(repo *MockUserRepository) { /* Not called */ },
+			mockUserFindByEmail: func(repo *MockUserRepository) { /* Not called */ },
+			expectedStatus:      http.StatusBadRequest,
+			expectedBodyRegexp:  `{"error":"invalid request body"}`,
+		},
+		{
+			name:                "Missing Field",
+			body:                fmt.Sprintf(`{"name":"%s", "email":"%s"}`, userName, userEmail), // Missing password
+			mockHashPassword:    func(hasher *MockPasswordHasher) { /* Not called */ },
+			mockUserCreate:      func(repo *MockUserRepository) { /* Not called */ },
+			mockUserFindByEmail: func(repo *MockUserRepository) { /* Not called */ },
+			expectedStatus:      http.StatusBadRequest,
+			expectedBodyRegexp:  `{"error":"name, email, and password are required"}`,
+		},
+		{
+			name:             "FindByEmail DB Error",
+			body:             fmt.Sprintf(`{"name":"%s", "email":"%s", "password":"%s"}`, userName, userEmail, userPassword),
+			mockHashPassword: func(hasher *MockPasswordHasher) { /* Not called */ },
+			mockUserCreate:   func(repo *MockUserRepository) { /* Not called */ },
+			mockUserFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(nil, assert.AnError).Once()
+			},
+			expectedStatus:     http.StatusInternalServerError,
+			expectedBodyRegexp: `{"error":"failed to check email existence"}`,
 		},
 	}
 
 	for _, tc := range tests {
-		tc := tc // Capture range variable
+		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
-			// Setup inside t.Run for isolation
-			mockUserRepo, _, router := setupAuthTest(t)
+			// Create mocks for subtest
+			mockUserRepo := new(MockUserRepository)
+			mockHasher := new(MockPasswordHasher)
 
-			// --- Mock Setup ---
-			shouldMockFindByEmail := tc.expectedStatus != http.StatusBadRequest // Don't mock if validation fails early
-			if shouldMockFindByEmail {
-				// FindByEmail expects an email string
-				var expectedEmail string
-				if tc.body != `{"name":"Test User",}` { // Extract email unless JSON is invalid
-					// Quick way to get email for mock setup - might need a better method if body varies more
-					if strings.Contains(tc.body, "new@example.com") {
-						expectedEmail = "new@example.com"
-					} else if strings.Contains(tc.body, "existing@example.com") {
-						expectedEmail = "existing@example.com"
-					} else if strings.Contains(tc.body, "finderr@example.com") {
-						expectedEmail = "finderr@example.com"
-					} else if strings.Contains(tc.body, "createerr@example.com") {
-						expectedEmail = "createerr@example.com"
-					}
-				}
-				if expectedEmail != "" {
-					// If FindByEmail should return nil (user found), we provide a dummy user.
-					// If it should return ErrUserNotFound, we provide nil user and the error.
-					var userReturn *models.User
-					if tc.mockFindByEmailErr == nil { // Case: User Found (Email Exists)
-						userReturn = &models.User{ID: uuid.New(), Email: expectedEmail}
-					}
-					mockUserRepo.On("FindByEmail", mock.Anything, expectedEmail).Return(userReturn, tc.mockFindByEmailErr).Once()
-				}
-			}
+			// Create a NEW AuthHandler INSIDE t.Run using subtest mocks
+			authHandler := handlers.NewAuthHandler(mockUserRepo, mockHasher, testJwtSecret, time.Hour*1)
 
-			shouldMockCreate := tc.expectedStatus != http.StatusBadRequest &&
-				tc.expectedStatus != http.StatusConflict &&
-				tc.mockFindByEmailErr == users.ErrUserNotFound // Only mock create if FindByEmail reported 'not found'
+			// Setup mocks for the specific test case by passing the subtest mocks
+			tc.mockUserFindByEmail(mockUserRepo)
+			tc.mockHashPassword(mockHasher)
+			tc.mockUserCreate(mockUserRepo)
 
-			if shouldMockCreate {
-				// Expect Create to be called with context, name, email, hash
-				mockUserRepo.On(
-					"Create",
-					mock.Anything,                 // ctx
-					mock.AnythingOfType("string"), // name
-					mock.AnythingOfType("string"), // email
-					mock.AnythingOfType("string"), // passwordHash
-				).Return(
-					// This function provides the *models.User return value
-					func(ctx context.Context, name, email, hash string) *models.User {
-						if tc.mockCreateErr != nil {
-							return nil // Return nil user if mock error is set
-						}
-						// Simulate successful creation
-						return &models.User{
-							ID:    uuid.New(), // Generate dynamic ID
-							Name:  name,
-							Email: email,
-							// PasswordHash is not typically returned
-							CreatedAt: time.Now(), // Set dynamic timestamps
-							UpdatedAt: time.Now(),
-						}
-					},
-					// This is the error return value
-					tc.mockCreateErr,
-				).Once()
-			}
+			// Create router and register handler INSIDE t.Run for isolation
+			router := mux.NewRouter()
+			router.HandleFunc("/register", authHandler.Register).Methods("POST")
 
-			// --- Request Execution ---
-			req := httptest.NewRequest("POST", "/api/auth/register", strings.NewReader(tc.body))
+			req, _ := http.NewRequest("POST", "/register", bytes.NewBufferString(tc.body))
 			req.Header.Set("Content-Type", "application/json")
-			rr := httptest.NewRecorder()
-			router.ServeHTTP(rr, req)
 
-			// --- Assertions ---
-			assert.Equal(t, tc.expectedStatus, rr.Code, "Status code mismatch")
-			assert.Contains(t, rr.Body.String(), tc.expectedBody, "Response body mismatch")
+			rr := executeRequestAndAssert(t, router, req, tc.expectedStatus, "") // Check status code first
+			// Use Regexp for body check because of dynamic ID/timestamps
+			require.Regexp(t, tc.expectedBodyRegexp, rr.Body.String(), "handler returned unexpected body content")
+
 			mockUserRepo.AssertExpectations(t)
+			mockHasher.AssertExpectations(t)
 		})
 	}
 }
 
-// Placeholder for TestAuthHandler_LoginHandler
-func TestAuthHandler_LoginHandler(t *testing.T) {
-	// Use the real hasher from setup to create a valid hash for tests
-	hasher := auth.NewBcryptPasswordHasher()
-	correctPassword := "password123"
-	hashedPassword, err := hasher.HashPassword(correctPassword)
-	assert.NoError(t, err, "Failed to hash password during test setup")
-
-	testUser := &models.User{
-		ID:           uuid.New(),
-		Email:        "test@example.com",
-		PasswordHash: hashedPassword,
-		Name:         "Test User",
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-	}
+func TestAuthHandler_Login(t *testing.T) {
+	// User details
+	userEmail := "test@example.com"
+	userPassword := "password123"
+	storedHash := "correct_hashed_password"
+	fakeUserID := uuid.New()
+	foundUser := &models.User{ID: fakeUserID, Email: userEmail, PasswordHash: storedHash}
 
 	tests := []struct {
-		name                  string
-		body                  string
-		mockFindByEmailReturn *models.User // User returned by FindByEmail
-		mockFindByEmailErr    error        // Error returned by FindByEmail
-		expectedStatus        int
-		expectedBody          string // Check for token presence or error message
+		name string
+		body string
+		// Pass mocks created inside t.Run
+		mockFindByEmail   func(*MockUserRepository)
+		mockCheckPassword func(*MockPasswordHasher)
+		expectedStatus    int
+		expectedBodyJSON  map[string]interface{} // Check specific fields
+		expectedBodyError string                 // For error cases
 	}{
 		{
-			name:                  "Success",
-			body:                  `{"email":"test@example.com","password":"password123"}`,
-			mockFindByEmailReturn: testUser, // User found with correct hash
-			mockFindByEmailErr:    nil,
-			expectedStatus:        http.StatusOK,
-			expectedBody:          `"token":"`, // Just check that a token key exists
+			name: "Success",
+			body: fmt.Sprintf(`{"email":"%s", "password":"%s"}`, userEmail, userPassword),
+			mockFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(foundUser, nil).Once()
+			},
+			mockCheckPassword: func(hasher *MockPasswordHasher) {
+				hasher.On("CheckPassword", storedHash, userPassword).Return(nil).Once()
+			},
+			expectedStatus:    http.StatusOK,
+			expectedBodyJSON:  map[string]interface{}{"token": mock.AnythingOfType("string")},
+			expectedBodyError: "",
 		},
 		{
-			name:                  "Failure - Invalid JSON",
-			body:                  `{"email":"test@example.com"`, // Malformed
-			mockFindByEmailReturn: nil,
-			mockFindByEmailErr:    nil, // Won't be called
-			expectedStatus:        http.StatusBadRequest,
-			expectedBody:          `{"error":"invalid request body"}`,
+			name: "User Not Found",
+			body: fmt.Sprintf(`{"email":"%s", "password":"%s"}`, userEmail, userPassword),
+			mockFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(nil, users.ErrUserNotFound).Once()
+			},
+			mockCheckPassword: func(hasher *MockPasswordHasher) { /* Not called */ },
+			expectedStatus:    http.StatusUnauthorized,
+			expectedBodyJSON:  nil,
+			expectedBodyError: `{"error":"invalid email or password"}`,
 		},
 		{
-			name:                  "Failure - Missing Email",
-			body:                  `{"password":"password123"}`,
-			mockFindByEmailReturn: nil,
-			mockFindByEmailErr:    nil, // Won't be called
-			expectedStatus:        http.StatusBadRequest,
-			expectedBody:          `{"error":"email and password are required"}`,
+			name: "Incorrect Password",
+			body: fmt.Sprintf(`{"email":"%s", "password":"wrongpassword"}`, userEmail),
+			mockFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(foundUser, nil).Once()
+			},
+			mockCheckPassword: func(hasher *MockPasswordHasher) {
+				hasher.On("CheckPassword", storedHash, "wrongpassword").Return(bcrypt.ErrMismatchedHashAndPassword).Once()
+			},
+			expectedStatus:    http.StatusUnauthorized,
+			expectedBodyJSON:  nil,
+			expectedBodyError: `{"error":"invalid email or password"}`,
 		},
 		{
-			name:                  "Failure - Missing Password",
-			body:                  `{"email":"test@example.com"}`,
-			mockFindByEmailReturn: nil,
-			mockFindByEmailErr:    nil, // Won't be called
-			expectedStatus:        http.StatusBadRequest,
-			expectedBody:          `{"error":"email and password are required"}`,
+			name: "Find User DB Error",
+			body: fmt.Sprintf(`{"email":"%s", "password":"%s"}`, userEmail, userPassword),
+			mockFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(nil, assert.AnError).Once()
+			},
+			mockCheckPassword: func(hasher *MockPasswordHasher) { /* Not called */ },
+			expectedStatus:    http.StatusInternalServerError,
+			expectedBodyJSON:  nil,
+			expectedBodyError: `{"error":"login failed"}`, // Updated error message
 		},
 		{
-			name:                  "Failure - User Not Found",
-			body:                  `{"email":"notfound@example.com","password":"password123"}`,
-			mockFindByEmailReturn: nil,
-			mockFindByEmailErr:    users.ErrUserNotFound,
-			expectedStatus:        http.StatusUnauthorized,
-			expectedBody:          `{"error":"invalid email or password"}`,
+			name: "Check Password Error",
+			body: fmt.Sprintf(`{"email":"%s", "password":"%s"}`, userEmail, userPassword),
+			mockFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(foundUser, nil).Once()
+			},
+			mockCheckPassword: func(hasher *MockPasswordHasher) {
+				// Simulate an error during the check (could be bcrypt error or other)
+				hasher.On("CheckPassword", storedHash, userPassword).Return(assert.AnError).Once()
+			},
+			expectedStatus:    http.StatusUnauthorized,
+			expectedBodyJSON:  nil,
+			expectedBodyError: `{"error":"invalid email or password"}`,
 		},
 		{
-			name:                  "Failure - Incorrect Password",
-			body:                  `{"email":"test@example.com","password":"wrongpassword"}`,
-			mockFindByEmailReturn: testUser, // User found, but password check will fail
-			mockFindByEmailErr:    nil,
-			expectedStatus:        http.StatusUnauthorized,
-			expectedBody:          `{"error":"invalid email or password"}`,
+			name: "Token Generation Error",
+			body: fmt.Sprintf(`{"email":"%s", "password":"%s"}`, userEmail, userPassword),
+			mockFindByEmail: func(repo *MockUserRepository) {
+				repo.On("FindByEmail", mock.Anything, userEmail).Return(foundUser, nil).Once()
+			},
+			mockCheckPassword: func(hasher *MockPasswordHasher) {
+				hasher.On("CheckPassword", storedHash, userPassword).Return(nil).Once()
+				// Assume GenerateToken succeeds if CheckPassword is nil.
+			},
+			expectedStatus:    http.StatusOK,
+			expectedBodyJSON:  map[string]interface{}{"token": mock.AnythingOfType("string")},
+			expectedBodyError: "",
 		},
 		{
-			name:                  "Failure - FindByEmail Repo Error",
-			body:                  `{"email":"dberror@example.com","password":"password123"}`,
-			mockFindByEmailReturn: nil,
-			mockFindByEmailErr:    errors.New("db find error"),
-			expectedStatus:        http.StatusInternalServerError,
-			expectedBody:          `{"error":"login failed"}`,
+			name:              "Invalid JSON",
+			body:              `{"email":"bad}`, // Malformed
+			mockFindByEmail:   func(repo *MockUserRepository) { /* Not called */ },
+			mockCheckPassword: func(hasher *MockPasswordHasher) { /* Not called */ },
+			expectedStatus:    http.StatusBadRequest,
+			expectedBodyJSON:  nil,
+			expectedBodyError: `{"error":"invalid request body"}`,
+		},
+		{
+			name:              "Missing Field",
+			body:              fmt.Sprintf(`{"email":"%s"}`, userEmail), // Missing password
+			mockFindByEmail:   func(repo *MockUserRepository) { /* Not called */ },
+			mockCheckPassword: func(hasher *MockPasswordHasher) { /* Not called */ },
+			expectedStatus:    http.StatusBadRequest,
+			expectedBodyJSON:  nil,
+			expectedBodyError: `{"error":"email and password are required"}`, // Updated error message
 		},
 	}
 
 	for _, tc := range tests {
-		tc := tc // Capture range variable
+		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
-			// Setup inside t.Run for isolation
-			mockUserRepo, _, router := setupAuthTest(t)
+			// Create mocks for subtest
+			mockUserRepo := new(MockUserRepository)
+			mockHasher := new(MockPasswordHasher)
 
-			// --- Mock Setup ---
-			shouldMockFindByEmail := tc.expectedStatus != http.StatusBadRequest
-			if shouldMockFindByEmail {
-				// Extract expected email (simple approach)
-				var expectedEmail string
-				if strings.Contains(tc.body, "test@example.com") {
-					expectedEmail = "test@example.com"
-				} else if strings.Contains(tc.body, "notfound@example.com") {
-					expectedEmail = "notfound@example.com"
-				} else if strings.Contains(tc.body, "dberror@example.com") {
-					expectedEmail = "dberror@example.com"
-				}
-				if expectedEmail != "" {
-					mockUserRepo.On("FindByEmail", mock.Anything, expectedEmail).Return(tc.mockFindByEmailReturn, tc.mockFindByEmailErr).Once()
-				}
+			// Create a NEW AuthHandler INSIDE t.Run using subtest mocks
+			authHandler := handlers.NewAuthHandler(mockUserRepo, mockHasher, testJwtSecret, time.Hour*1)
+
+			// Setup mock expectations on the subtest mocks
+			tc.mockFindByEmail(mockUserRepo)
+			tc.mockCheckPassword(mockHasher)
+
+			// Create router and register handler INSIDE t.Run for isolation
+			router := mux.NewRouter()
+			router.HandleFunc("/login", authHandler.Login).Methods("POST")
+
+			req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+
+			rr := executeRequestAndAssert(t, router, req, tc.expectedStatus, "") // Check status only first
+
+			if tc.expectedBodyError != "" {
+				require.JSONEq(t, tc.expectedBodyError, rr.Body.String(), "Handler returned wrong error body")
+			} else {
+				// Check for token presence and type
+				var respBody map[string]interface{}
+				err := json.Unmarshal(rr.Body.Bytes(), &respBody)
+				require.NoError(t, err, "Failed to unmarshal response body")
+				require.Contains(t, respBody, "token", "Response body should contain token")
+				require.IsType(t, "string", respBody["token"], "Token should be a string")
+				// Optionally, validate the token structure/payload here if needed
 			}
 
-			// --- Request Execution ---
-			req := httptest.NewRequest("POST", "/api/auth/login", strings.NewReader(tc.body))
-			req.Header.Set("Content-Type", "application/json")
-			rr := httptest.NewRecorder()
-			router.ServeHTTP(rr, req)
-
-			// --- Assertions ---
-			assert.Equal(t, tc.expectedStatus, rr.Code, "Status code mismatch")
-			assert.Contains(t, rr.Body.String(), tc.expectedBody, "Response body mismatch")
 			mockUserRepo.AssertExpectations(t)
+			mockHasher.AssertExpectations(t)
 		})
 	}
 }

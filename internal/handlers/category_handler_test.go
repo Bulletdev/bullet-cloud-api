@@ -18,15 +18,19 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // setupCategoryTest creates mock repositories, handler, middleware, and router for category tests.
-func setupCategoryTest(t *testing.T) (*categories.MockCategoryRepository, *users.MockUserRepository, *handlers.CategoryHandler, *auth.Middleware, *mux.Router) {
+func setupCategoryTest(t *testing.T) (*categories.MockCategoryRepository, *MockUserRepository, *handlers.CategoryHandler, *auth.Middleware, *mux.Router) {
 	mockCategoryRepo := new(categories.MockCategoryRepository)
-	// Call the base setup
-	mockUserRepo, authMiddleware, router := setupBaseTest(t) // setupBaseTest is in the same package
+	// Call the base setup - Capture necessary mocks and router, ignore others
+	_, _, router, mockUserRepo, _, _, _, _, _ := setupBaseTest(t)
 
 	categoryHandler := handlers.NewCategoryHandler(mockCategoryRepo)
+
+	// Need authMiddleware instance for protected routes
+	authMiddleware := auth.NewMiddleware(testJwtSecret, mockUserRepo)
 
 	apiV1 := router.PathPrefix("/api").Subrouter()
 
@@ -173,8 +177,9 @@ func TestCategoryHandler_GetCategory(t *testing.T) {
 
 func TestCategoryHandler_CreateCategory(t *testing.T) {
 	testUserID := uuid.New()
-	testJwtSecret := "test-secret-for-jwt-please-change"
-	testToken := generateTestToken(testUserID, testJwtSecret)
+	// Corrected generateTestToken call
+	testToken, err := generateTestToken(testUserID)
+	require.NoError(t, err, "Failed to generate test token")
 
 	tests := []struct {
 		name           string
@@ -297,8 +302,9 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 func TestCategoryHandler_UpdateCategory(t *testing.T) {
 	testUserID := uuid.New()
 	categoryToUpdateID := uuid.New()
-	testJwtSecret := "test-secret-for-jwt-please-change"
-	testToken := generateTestToken(testUserID, testJwtSecret)
+	// Corrected generateTestToken call
+	testToken, err := generateTestToken(testUserID)
+	require.NoError(t, err, "Failed to generate test token")
 	userForToken := &models.User{ID: testUserID} // Define user for token once
 
 	tests := []struct {
@@ -480,8 +486,9 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 func TestCategoryHandler_DeleteCategory(t *testing.T) {
 	testUserID := uuid.New()
 	categoryToDeleteID := uuid.New()
-	testJwtSecret := "test-secret-for-jwt-please-change"
-	testToken := generateTestToken(testUserID, testJwtSecret)
+	// Corrected generateTestToken call
+	testToken, err := generateTestToken(testUserID)
+	require.NoError(t, err, "Failed to generate test token")
 	userForToken := &models.User{ID: testUserID} // Define user for token once
 
 	tests := []struct {

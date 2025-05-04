@@ -48,11 +48,19 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Basic Validation
-	if req.Name == "" || req.Price < 0 {
-		webutils.ErrorJSON(w, errors.New("product name is required and price must be non-negative"), http.StatusBadRequest)
+	// --- Specific Validations ---
+	// Validate Name (must not be empty)
+	if req.Name == "" {
+		webutils.ErrorJSON(w, errors.New("product name is required"), http.StatusBadRequest)
 		return
 	}
+	// Validate Price (must be positive)
+	if req.Price <= 0 {
+		webutils.ErrorJSON(w, errors.New("product price must be positive"), http.StatusBadRequest)
+		return
+	}
+	// TODO: Add more validations if needed (e.g., description length, category exists)
+	// --- End Validations ---
 
 	newProduct := &models.Product{
 		Name:        req.Name,

@@ -1,14 +1,38 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
-  title: API de Produtos
-  version: 1.0.0
+  title: Bullet Cloud E-commerce API
+  version: 1.1.0
+  description: API RESTful para funcionalidades de e-commerce.
+servers:
+  - url: http://localhost:4444/api
+    description: Servidor de Desenvolvimento Local
+tags:
+  - name: Health
+    description: Verificação de Status da Aplicação
+  - name: Auth
+    description: Autenticação e Gerenciamento de Sessão
+  - name: Users
+    description: Operações relacionadas a Usuários (apenas 'me')
+  - name: Addresses
+    description: Gerenciamento de Endereços de Usuários
+  - name: Products
+    description: Gerenciamento de Produtos
+  - name: Categories
+    description: Gerenciamento de Categorias
+  - name: Cart
+    description: Gerenciamento do Carrinho de Compras
+  - name: Orders
+    description: Gerenciamento de Pedidos
+
 paths:
   /health:
     get:
-      summary: Verificar status da aplicação
+      tags:
+        - Health
+      summary: Verifica status da aplicação
       responses:
         '200':
-          description: Status da aplicação
+          description: Aplicação está operacional
           content:
             application/json:
               schema:
@@ -16,9 +40,292 @@ paths:
                 properties:
                   status:
                     type: string
+                    example: ok
+
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Registra um novo usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterInput'
+      responses:
+        '201':
+          description: Usuário registrado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Requisição inválida (campos faltando, formato incorreto)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email já registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Autentica um usuário e retorna um token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginInput'
+      responses:
+        '200':
+          description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Requisição inválida (campos faltando, formato incorreto)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Credenciais inválidas (email ou senha incorretos)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor (falha ao gerar token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Retorna informações do usuário autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dados do usuário autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Não autorizado (token inválido ou ausente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{userId}/addresses:
+    get:
+      tags:
+        - Addresses
+      summary: Lista os endereços de um usuário específico
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID do usuário
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de endereços do usuário
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+        '401':
+          description: Não autorizado (token inválido ou ausente)
+        '403':
+          description: Proibido (tentando acessar endereços de outro usuário)
+        '404':
+          description: Usuário não encontrado (ID inválido na URL)
+        '500':
+          description: Erro interno do servidor
+    post:
+      tags:
+        - Addresses
+      summary: Adiciona um novo endereço para o usuário especificado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID do usuário para o qual adicionar o endereço
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '201':
+          description: Endereço criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+        '400':
+          description: Requisição inválida (campos faltando, etc.)
+        '401':
+          description: Não autorizado
+        '403':
+          description: Proibido (tentando adicionar endereço para outro usuário)
+        '404':
+          description: Usuário não encontrado (ID inválido na URL)
+        '500':
+          description: Erro interno do servidor
+
+  /users/{userId}/addresses/{addressId}:
+    put:
+      tags:
+        - Addresses
+      summary: Atualiza um endereço existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID do usuário proprietário do endereço
+          schema:
+            type: string
+            format: uuid
+        - name: addressId
+          in: path
+          required: true
+          description: ID do endereço a ser atualizado
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '200':
+          description: Endereço atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+        '400':
+          description: Requisição inválida (campos faltando, IDs inválidos)
+        '401':
+          description: Não autorizado
+        '403':
+          description: Proibido (tentando atualizar endereço de outro usuário)
+        '404':
+          description: Endereço ou usuário não encontrado
+        '500':
+          description: Erro interno do servidor
+    delete:
+      tags:
+        - Addresses
+      summary: Remove um endereço existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID do usuário proprietário do endereço
+          schema:
+            type: string
+            format: uuid
+        - name: addressId
+          in: path
+          required: true
+          description: ID do endereço a ser removido
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Endereço removido com sucesso (sem conteúdo)
+        '401':
+          description: Não autorizado
+        '403':
+          description: Proibido (tentando remover endereço de outro usuário)
+        '404':
+          description: Endereço ou usuário não encontrado
+        '500':
+          description: Erro interno do servidor
+
+  /users/{userId}/addresses/{addressId}/default:
+    post:
+      tags:
+        - Addresses
+      summary: Define um endereço como padrão para o usuário
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID do usuário proprietário do endereço
+          schema:
+            type: string
+            format: uuid
+        - name: addressId
+          in: path
+          required: true
+          description: ID do endereço a ser definido como padrão
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Endereço definido como padrão com sucesso (sem corpo)
+        '401':
+          description: Não autorizado
+        '403':
+          description: Proibido (tentando definir endereço de outro usuário)
+        '404':
+          description: Endereço ou usuário não encontrado
+        '500':
+          description: Erro interno do servidor
+
   /products:
     get:
-      summary: Listar todos os produtos
+      tags:
+        - Products
+      summary: Lista todos os produtos
       responses:
         '200':
           description: Lista de produtos
@@ -28,8 +335,14 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Product'
+        '500':
+          description: Erro interno do servidor
     post:
-      summary: Criar produto
+      tags:
+        - Products
+      summary: Cria um novo produto
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -38,35 +351,58 @@ paths:
               $ref: '#/components/schemas/ProductInput'
       responses:
         '201':
-          description: Produto criado
+          description: Produto criado com sucesso
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
+        '400':
+          description: Requisição inválida (campos faltando, preço <= 0)
+        '401':
+          description: Não autorizado
+        '500':
+          description: Erro interno do servidor
+
   /products/{id}:
     get:
-      summary: Buscar produto específico
+      tags:
+        - Products
+      summary: Busca um produto específico pelo ID
       parameters:
         - name: id
           in: path
           required: true
+          description: ID do produto
           schema:
             type: string
+            format: uuid
       responses:
         '200':
-          description: Informações do produto
+          description: Detalhes do produto
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
+        '400':
+          description: ID inválido
+        '404':
+          description: Produto não encontrado
+        '500':
+          description: Erro interno do servidor
     put:
-      summary: Atualizar produto
+      tags:
+        - Products
+      summary: Atualiza um produto existente
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
+          description: ID do produto a ser atualizado
           schema:
             type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -75,41 +411,716 @@ paths:
               $ref: '#/components/schemas/ProductInput'
       responses:
         '200':
-          description: Produto atualizado
+          description: Produto atualizado com sucesso
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
+        '400':
+          description: Requisição inválida (campos faltando, preço <= 0)
+        '401':
+          description: Não autorizado
+        '404':
+          description: Produto não encontrado
+        '500':
+          description: Erro interno do servidor
     delete:
-      summary: Deletar produto
+      tags:
+        - Products
+      summary: Deleta um produto existente
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
+          description: ID do produto a ser deletado
           schema:
             type: string
+            format: uuid
       responses:
         '204':
-          description: Produto deletado
+          description: Produto deletado com sucesso
+        '401':
+          description: Não autorizado
+        '404':
+          description: Produto não encontrado
+        '500':
+          description: Erro interno do servidor
+
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: Lista todas as categorias
+      responses:
+        '200':
+          description: Lista de categorias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '500':
+          description: Erro interno do servidor
+    post:
+      tags:
+        - Categories
+      summary: Cria uma nova categoria
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      responses:
+        '201':
+          description: Categoria criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Requisição inválida (nome faltando)
+        '401':
+          description: Não autorizado
+        '409':
+          description: Categoria com este nome já existe
+        '500':
+          description: Erro interno do servidor
+
+  /categories/{id}:
+    get:
+      tags:
+        - Categories
+      summary: Busca uma categoria específica pelo ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da categoria
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da categoria
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: ID inválido
+        '404':
+          description: Categoria não encontrada
+        '500':
+          description: Erro interno do servidor
+    put:
+      tags:
+        - Categories
+      summary: Atualiza uma categoria existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da categoria a ser atualizada
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      responses:
+        '200':
+          description: Categoria atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Requisição inválida (nome faltando)
+        '401':
+          description: Não autorizado
+        '404':
+          description: Categoria não encontrada
+        '409':
+          description: Categoria com este nome já existe
+        '500':
+          description: Erro interno do servidor
+    delete:
+      tags:
+        - Categories
+      summary: Deleta uma categoria existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da categoria a ser deletada
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Categoria deletada com sucesso
+        '401':
+          description: Não autorizado
+        '404':
+          description: Categoria não encontrada
+        '500':
+          description: Erro interno do servidor (ex: categoria em uso por produtos)
+
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: Recupera o carrinho de compras do usuário autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Carrinho e seus itens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '401':
+          description: Não autorizado
+        '500':
+          description: Erro interno do servidor
+    delete:
+      tags:
+        - Cart
+      summary: Limpa todos os itens do carrinho do usuário autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Carrinho esvaziado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse' # Retorna o carrinho vazio
+        '401':
+          description: Não autorizado
+        '500':
+          description: Erro interno do servidor
+
+  /cart/items:
+    post:
+      tags:
+        - Cart
+      summary: Adiciona um item ao carrinho (ou incrementa quantidade)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemInput'
+      responses:
+        '200':
+          description: Item adicionado/atualizado, retorna o carrinho atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: Requisição inválida (produto ou quantidade inválida)
+        '401':
+          description: Não autorizado
+        '404':
+          description: Produto não encontrado
+        '500':
+          description: Erro interno do servidor
+
+  /cart/items/{productId}:
+    put:
+      tags:
+        - Cart
+      summary: Atualiza a quantidade de um item específico no carrinho
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: ID do produto no carrinho a ser atualizado
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemUpdateInput'
+      responses:
+        '200':
+          description: Quantidade atualizada, retorna o carrinho atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: Requisição inválida (quantidade inválida)
+        '401':
+          description: Não autorizado
+        '404':
+          description: Item (produto) não encontrado no carrinho
+        '500':
+          description: Erro interno do servidor
+    delete:
+      tags:
+        - Cart
+      summary: Remove um item específico do carrinho
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: ID do produto a ser removido do carrinho
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item removido, retorna o carrinho atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '401':
+          description: Não autorizado
+        '404':
+          description: Item (produto) não encontrado no carrinho
+        '500':
+          description: Erro interno do servidor
+
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Lista os pedidos do usuário autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de pedidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order' # Só o pedido base, sem itens
+        '401':
+          description: Não autorizado
+        '500':
+          description: Erro interno do servidor
+    post:
+      tags:
+        - Orders
+      summary: Cria um novo pedido a partir do carrinho atual
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Pedido criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse' # Pedido com itens
+        '400':
+          description: Requisição inválida (carrinho vazio)
+        '401':
+          description: Não autorizado
+        '500':
+          description: Erro interno do servidor
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Busca os detalhes de um pedido específico
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID do pedido
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes do pedido e seus itens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '401':
+          description: Não autorizado
+        '403':
+          description: Proibido (tentando acessar pedido de outro usuário)
+        '404':
+          description: Pedido não encontrado
+        '500':
+          description: Erro interno do servidor
+
+
 components:
   schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    UserRegisterInput:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    UserLoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+    Address:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user_id:
+          type: string
+          format: uuid
+          readOnly: true
+        street:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postal_code:
+          type: string
+        country:
+          type: string
+        is_default:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    AddressInput:
+      type: object
+      required:
+        - street
+        - city
+        - state
+        - postal_code
+        - country
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postal_code:
+          type: string
+        country:
+          type: string
+        is_default:
+          type: boolean
+          default: false
     Product:
       type: object
       properties:
         id:
           type: string
-        nome:
+          format: uuid
+          readOnly: true
+        name:
           type: string
-        preço:
+        description:
+          type: string
+          nullable: true
+        price:
           type: number
-        descrição:
+          format: float
+        category_id:
           type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     ProductInput:
       type: object
+      required:
+        - name
+        - price
       properties:
-        nome:
+        name:
           type: string
-        preço:
+        description:
+          type: string
+          nullable: true
+        price:
           type: number
-        descrição:
+          format: float
+          minimum: 0.01 # Preço deve ser positivo
+        category_id:
           type: string
+          format: uuid
+          nullable: true
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    CategoryInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user_id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    CartItem:
+      type: object
+      properties:
+        # O ID do CartItem em si não é retornado/usado na API diretamente
+        # id:
+        #   type: string
+        #   format: uuid
+        #   readOnly: true
+        cart_id:
+          type: string
+          format: uuid
+          readOnly: true
+        product_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+        price: # Preço unitário no momento da adição (ou atual)
+          type: number
+          format: float
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    CartItemInput:
+      type: object
+      required:
+        - product_id
+        - quantity
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+    CartItemUpdateInput:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          format: int32
+          minimum: 0 # Permite 0 para remover o item
+    CartResponse:
+      type: object
+      properties:
+        cart:
+          $ref: '#/components/schemas/Cart'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user_id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELED]
+        total_amount:
+          type: number
+          format: float
+          readOnly: true
+        shipping_address_id:
+          type: string
+          format: uuid
+          nullable: true # Pode ser nulo se ainda não definido
+        tracking_code:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        order_id:
+          type: string
+          format: uuid
+          readOnly: true
+        product_id:
+          type: string
+          format: uuid
+          readOnly: true
+        quantity:
+          type: integer
+          format: int32
+          readOnly: true
+        unit_price: # Preço no momento do pedido
+          type: number
+          format: float
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    OrderResponse:
+      type: object
+      properties:
+        order:
+          $ref: '#/components/schemas/Order'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Mensagem de erro descritiva.
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Token JWT para autenticação. Exemplo: 'Bearer {token}'"
