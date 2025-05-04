@@ -34,6 +34,7 @@ func main() {
 	}
 	defer dbPool.Close()
 
+	// Instantiate repositories
 	userRepo := users.NewPostgresUserRepository(dbPool)
 	productRepo := products.NewPostgresProductRepository(dbPool)
 	categoryRepo := categories.NewPostgresCategoryRepository(dbPool)
@@ -44,13 +45,15 @@ func main() {
 	// Instantiate the password hasher
 	hasher := auth.NewBcryptPasswordHasher()
 
-	// Pass the hasher to NewAuthHandler
+	// Instantiate handlers
 	authHandler := handlers.NewAuthHandler(userRepo, hasher, cfg.JWTSecret, defaultJWTExpiry)
 	userHandler := handlers.NewUserHandler(userRepo, addressRepo)
 	productHandler := handlers.NewProductHandler(productRepo)
 	categoryHandler := handlers.NewCategoryHandler(categoryRepo)
 	cartHandler := handlers.NewCartHandler(cartRepo, productRepo)
 	orderHandler := handlers.NewOrderHandler(orderRepo, cartRepo, addressRepo)
+
+	// Instantiate middleware
 	authMiddleware := auth.NewMiddleware(cfg.JWTSecret, userRepo)
 
 	r := setupRoutes(authHandler, userHandler, productHandler, categoryHandler, cartHandler, orderHandler, authMiddleware)
@@ -60,6 +63,7 @@ func main() {
 		port = defaultPort
 	}
 
+	// Configure HTTP server
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      r,
@@ -68,9 +72,11 @@ func main() {
 		IdleTimeout:  15 * time.Second,
 	}
 
+	// Setup graceful shutdown
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
+	// Start server in a goroutine
 	go func() {
 		log.Printf("Server starting on port %s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -78,9 +84,11 @@ func main() {
 		}
 	}()
 
+	// Wait for shutdown signal
 	<-done
 	log.Println("Server shutting down gracefully...")
 
+	// Create context for shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -91,11 +99,13 @@ func main() {
 	log.Println("Server exited properly")
 }
 
+// setupRoutes configures the API routes using mux router.
 func setupRoutes(ah *handlers.AuthHandler, uh *handlers.UserHandler, ph *handlers.ProductHandler, ch *handlers.CategoryHandler, cartH *handlers.CartHandler, oh *handlers.OrderHandler, mw *auth.Middleware) *mux.Router {
 	r := mux.NewRouter()
 
 	apiV1 := r.PathPrefix("/api").Subrouter()
 
+	// Public routes
 	apiV1.HandleFunc("/health", handlers.HealthCheck).Methods("GET")
 	apiV1.HandleFunc("/auth/register", ah.Register).Methods("POST")
 	apiV1.HandleFunc("/auth/login", ah.Login).Methods("POST")
@@ -104,6 +114,7 @@ func setupRoutes(ah *handlers.AuthHandler, uh *handlers.UserHandler, ph *handler
 	apiV1.HandleFunc("/categories", ch.GetAllCategories).Methods("GET")
 	apiV1.HandleFunc("/categories/{id:[0-9a-fA-F-]+}", ch.GetCategory).Methods("GET")
 
+	// Protected routes (grouped by resource)
 	protectedUserRoutes := apiV1.PathPrefix("/users").Subrouter()
 	protectedUserRoutes.Use(mw.Authenticate)
 	protectedUserRoutes.HandleFunc("/me", uh.GetMe).Methods("GET")

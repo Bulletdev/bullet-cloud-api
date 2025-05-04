@@ -81,7 +81,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hash the password using the injected hasher
 	hashedPassword, err := h.Hasher.HashPassword(req.Password)
 	if err != nil {
 		webutils.ErrorJSON(w, errors.New("failed to register user"), http.StatusInternalServerError)
@@ -94,7 +93,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		PasswordHash: hashedPassword,
 	}
 
-	// Call UserRepo.Create with individual fields as per current repo signature
 	createdUser, err := h.UserRepo.Create(context.Background(), user.Name, user.Email, user.PasswordHash)
 	if err != nil {
 		webutils.ErrorJSON(w, errors.New("failed to register user"), http.StatusInternalServerError)
@@ -133,14 +131,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check the password using the injected hasher
 	err = h.Hasher.CheckPassword(user.PasswordHash, req.Password)
-	if err != nil { // bcrypt.CompareHashAndPassword returns error on mismatch
+	if err != nil {
 		webutils.ErrorJSON(w, errors.New("invalid email or password"), http.StatusUnauthorized)
 		return
 	}
 
-	// Generate JWT using the correct function name
 	token, err := auth.GenerateToken(user.ID, h.JwtSecret, h.TokenExpiryDuration)
 	if err != nil {
 		webutils.ErrorJSON(w, errors.New("login failed"), http.StatusInternalServerError)

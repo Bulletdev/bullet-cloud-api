@@ -20,20 +20,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// --- Test Setup Helpers ---
-
-// setupBaseTest creates common mocks and components for handler tests.
-func setupBaseTest(t *testing.T) (*users.MockUserRepository, *auth.Middleware, *mux.Router) {
-	mockUserRepo := new(users.MockUserRepository)
-	// Use a fixed test secret for predictable tokens
-	testJwtSecret := "test-secret-for-jwt-please-change"
-	authMiddleware := auth.NewMiddleware(testJwtSecret, mockUserRepo)
-
-	router := mux.NewRouter()
-
-	return mockUserRepo, authMiddleware, router
-}
-
 // setupProductTest creates mock repositories, handler, middleware, and router for tests.
 func setupProductTest(t *testing.T) (*products.MockProductRepository, *users.MockUserRepository, *handlers.ProductHandler, *auth.Middleware, *mux.Router) {
 	mockProductRepo := new(products.MockProductRepository)
@@ -186,15 +172,6 @@ func TestProductHandler_GetProduct(t *testing.T) {
 }
 
 // --- Tests for Protected Routes (Require Authentication) ---
-
-// Helper to generate a test token
-func generateTestToken(userID uuid.UUID, secret string) string {
-	token, err := auth.GenerateToken(userID, secret, time.Hour)
-	if err != nil {
-		panic("failed to generate test token: " + err.Error()) // Panic in test setup is ok
-	}
-	return token
-}
 
 func TestProductHandler_CreateProduct(t *testing.T) {
 	// Removed setup from here
