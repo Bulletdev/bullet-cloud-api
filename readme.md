@@ -184,9 +184,49 @@ golang-migrate/migrate (Migrações de Banco de Dados)
 
 **Autenticação**
 *   `POST /api/auth/register`: Registra um novo usuário.
+    *   **Corpo da Requisição:**
+        ```json
+        {
+          "name": "Nome Completo",
+          "email": "usuario@exemplo.com",
+          "password": "senhaSegura123"
+        }
+        ```
+    *   **Resposta Sucesso (201 Created):** Retorna o objeto do usuário criado (sem o hash da senha).
+        ```json
+        {
+          "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+          "name": "Nome Completo",
+          "email": "usuario@exemplo.com",
+          "created_at": "2023-10-27T10:00:00Z",
+          "updated_at": "2023-10-27T10:00:00Z"
+        }
+        ```
+    *   **Respostas de Erro:**
+        *   `400 Bad Request`: Corpo inválido, campos faltando.
+        *   `409 Conflict`: Email já registrado.
+        *   `500 Internal Server Error`: Falha ao criar usuário.
 *   `POST /api/auth/login`: Autentica um usuário e retorna um token JWT.
+    *   **Corpo da Requisição:**
+        ```json
+        {
+          "email": "usuario@exemplo.com",
+          "password": "senhaSegura123"
+        }
+        ```
+    *   **Resposta Sucesso (200 OK):** Retorna o token JWT.
+        ```json
+        {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+        ```
+    *   **Respostas de Erro:**
+        *   `400 Bad Request`: Corpo inválido, campos faltando.
+        *   `401 Unauthorized`: Email ou senha inválidos.
+        *   `500 Internal Server Error`: Falha ao gerar token.
 
 **Usuários**
+
 *   `GET /api/users/me` (Protegido): Retorna informações do usuário autenticado.
 *   `GET /api/users/{userId}/addresses` (Protegido): Lista endereços do usuário especificado.
 *   `POST /api/users/{userId}/addresses` (Protegido): Adiciona um novo endereço para o usuário.

@@ -215,8 +215,8 @@ func TestUserHandler_ListAddresses(t *testing.T) {
 			mockUserErrMid:    nil,
 			mockAddrReturn:    nil, // Won't be called
 			mockAddrErr:       nil,
-			expectedStatus:    http.StatusBadRequest,
-			expectedBody:      `{"error":"invalid user ID in URL"}`,
+			expectedStatus:    http.StatusNotFound,
+			expectedBody:      "404 page not found",
 		},
 		{
 			name:              "Failure - Middleware User Check Fails",
@@ -343,8 +343,8 @@ func TestUserHandler_AddAddress(t *testing.T) {
 			mockUserReturnMid: userForToken,
 			mockUserErrMid:    nil,
 			mockAddrCreateErr: nil, // Won't be called
-			expectedStatus:    http.StatusBadRequest,
-			expectedBody:      `{"error":"invalid user ID in URL"}`,
+			expectedStatus:    http.StatusNotFound,
+			expectedBody:      "404 page not found",
 		},
 		{
 			name:              "Failure - Repository Error",

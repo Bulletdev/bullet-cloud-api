@@ -2,24 +2,30 @@ package handlers
 
 import (
 	"bullet-cloud-api/internal/auth"
+	"bullet-cloud-api/internal/models"
 	"bullet-cloud-api/internal/users"
 	"bullet-cloud-api/internal/webutils"
+	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 )
 
 // AuthHandler handles authentication requests.
 type AuthHandler struct {
 	UserRepo            users.UserRepository
+	Hasher              auth.PasswordHasher
 	JwtSecret           string
 	TokenExpiryDuration time.Duration
 }
 
 // NewAuthHandler creates a new AuthHandler.
-func NewAuthHandler(userRepo users.UserRepository, jwtSecret string, tokenExpiry time.Duration) *AuthHandler {
+func NewAuthHandler(userRepo users.UserRepository, hasher auth.PasswordHasher, jwtSecret string, tokenExpiry time.Duration) *AuthHandler {
 	return &AuthHandler{
 		UserRepo:            userRepo,
+		Hasher:              hasher,
 		JwtSecret:           jwtSecret,
 		TokenExpiryDuration: tokenExpiry,
 	}
@@ -46,79 +52,100 @@ type LoginResponse struct {
 
 // Register handles new user registration.
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req RegisterRequest
-	if err := webutils.ReadJSON(r, &req); err != nil {
+	var req struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		webutils.ErrorJSON(w, errors.New("invalid request body"), http.StatusBadRequest)
 		return
 	}
 
-	// Basic validation
+	req.Name = strings.TrimSpace(req.Name)
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
 	if req.Name == "" || req.Email == "" || req.Password == "" {
 		webutils.ErrorJSON(w, errors.New("name, email, and password are required"), http.StatusBadRequest)
 		return
 	}
-	// TODO: Add more robust validation (email format, password strength)
 
-	// Hash password
-	hashedPassword, err := auth.HashPassword(req.Password)
-	if err != nil {
-		webutils.ErrorJSON(w, errors.New("failed to hash password"), http.StatusInternalServerError)
+	// Check if email already exists
+	_, err := h.UserRepo.FindByEmail(context.Background(), req.Email)
+	if err == nil {
+		webutils.ErrorJSON(w, errors.New("email already registered"), http.StatusConflict)
+		return
+	} else if !errors.Is(err, users.ErrUserNotFound) {
+		webutils.ErrorJSON(w, errors.New("failed to check email existence"), http.StatusInternalServerError)
 		return
 	}
 
-	// Create user
-	newUser, err := h.UserRepo.Create(r.Context(), req.Name, req.Email, hashedPassword)
+	// Hash the password using the injected hasher
+	hashedPassword, err := h.Hasher.HashPassword(req.Password)
 	if err != nil {
-		if errors.Is(err, users.ErrEmailAlreadyExists) {
-			webutils.ErrorJSON(w, err, http.StatusConflict)
-		} else {
-			webutils.ErrorJSON(w, errors.New("failed to create user"), http.StatusInternalServerError)
-		}
+		webutils.ErrorJSON(w, errors.New("failed to register user"), http.StatusInternalServerError)
 		return
 	}
 
-	// Return created user (ensure password hash is not included)
-	newUser.PasswordHash = "" // Already done in repository, but good practice to double-check
-	webutils.WriteJSON(w, http.StatusCreated, newUser)
+	user := &models.User{
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: hashedPassword,
+	}
+
+	// Call UserRepo.Create with individual fields as per current repo signature
+	createdUser, err := h.UserRepo.Create(context.Background(), user.Name, user.Email, user.PasswordHash)
+	if err != nil {
+		webutils.ErrorJSON(w, errors.New("failed to register user"), http.StatusInternalServerError)
+		return
+	}
+
+	webutils.WriteJSON(w, http.StatusCreated, createdUser)
 }
 
 // Login handles user login and JWT generation.
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
-	if err := webutils.ReadJSON(r, &req); err != nil {
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		webutils.ErrorJSON(w, errors.New("invalid request body"), http.StatusBadRequest)
 		return
 	}
+
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 
 	if req.Email == "" || req.Password == "" {
 		webutils.ErrorJSON(w, errors.New("email and password are required"), http.StatusBadRequest)
 		return
 	}
 
-	// Find user by email
-	user, err := h.UserRepo.FindByEmail(r.Context(), req.Email)
+	user, err := h.UserRepo.FindByEmail(context.Background(), req.Email)
 	if err != nil {
 		if errors.Is(err, users.ErrUserNotFound) {
 			webutils.ErrorJSON(w, errors.New("invalid email or password"), http.StatusUnauthorized)
 		} else {
-			webutils.ErrorJSON(w, errors.New("failed to find user"), http.StatusInternalServerError)
+			webutils.ErrorJSON(w, errors.New("login failed"), http.StatusInternalServerError)
 		}
 		return
 	}
 
-	// Check password
-	if !auth.CheckPasswordHash(req.Password, user.PasswordHash) {
+	// Check the password using the injected hasher
+	err = h.Hasher.CheckPassword(user.PasswordHash, req.Password)
+	if err != nil { // bcrypt.CompareHashAndPassword returns error on mismatch
 		webutils.ErrorJSON(w, errors.New("invalid email or password"), http.StatusUnauthorized)
 		return
 	}
 
-	// Generate JWT
-	tokenString, err := auth.GenerateToken(user.ID, h.JwtSecret, h.TokenExpiryDuration)
+	// Generate JWT using the correct function name
+	token, err := auth.GenerateToken(user.ID, h.JwtSecret, h.TokenExpiryDuration)
 	if err != nil {
-		webutils.ErrorJSON(w, errors.New("failed to generate token"), http.StatusInternalServerError)
+		webutils.ErrorJSON(w, errors.New("login failed"), http.StatusInternalServerError)
 		return
 	}
 
-	// Return token
-	webutils.WriteJSON(w, http.StatusOK, LoginResponse{Token: tokenString})
+	webutils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 }

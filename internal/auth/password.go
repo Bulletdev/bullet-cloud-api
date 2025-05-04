@@ -4,8 +4,22 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// HashPassword generates a bcrypt hash for the given password.
-func HashPassword(password string) (string, error) {
+// PasswordHasher defines the interface for hashing and verifying passwords.
+type PasswordHasher interface {
+	HashPassword(password string) (string, error)
+	CheckPassword(hashedPassword, password string) error
+}
+
+// BcryptPasswordHasher implements PasswordHasher using bcrypt.
+type BcryptPasswordHasher struct{}
+
+// NewBcryptPasswordHasher creates a new instance of BcryptPasswordHasher.
+func NewBcryptPasswordHasher() PasswordHasher {
+	return &BcryptPasswordHasher{}
+}
+
+// HashPassword hashes the given password using bcrypt.
+func (h *BcryptPasswordHasher) HashPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
@@ -13,8 +27,7 @@ func HashPassword(password string) (string, error) {
 	return string(hashedPassword), nil
 }
 
-// CheckPasswordHash compares a plain text password with a stored bcrypt hash.
-func CheckPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil // Returns true if the password matches the hash
+// CheckPassword compares a hashed password with a plaintext password.
+func (h *BcryptPasswordHasher) CheckPassword(hashedPassword, password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
