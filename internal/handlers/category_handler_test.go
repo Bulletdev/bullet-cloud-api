@@ -299,106 +299,107 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 	categoryToUpdateID := uuid.New()
 	testJwtSecret := "test-secret-for-jwt-please-change"
 	testToken := generateTestToken(testUserID, testJwtSecret)
+	userForToken := &models.User{ID: testUserID} // Define user for token once
 
 	tests := []struct {
-		name           string
-		categoryID     string
-		body           string
-		mockUserReturn *models.User
-		mockUserErr    error
-		mockUpdateErr  error
-		expectedStatus int
-		expectedBody   string
+		name              string
+		categoryID        string
+		body              string
+		mockUserReturnMid *models.User // Renamed for clarity
+		mockUserErrMid    error        // Renamed for clarity
+		mockUpdateErr     error
+		expectedStatus    int
+		expectedBody      string
 	}{
 		{
-			name:           "Success",
-			categoryID:     categoryToUpdateID.String(),
-			body:           `{"name":"Updated Category Name"}`,
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockUpdateErr:  nil,
-			expectedStatus: http.StatusOK,
-			expectedBody:   "Updated Category Name",
+			name:              "Success",
+			categoryID:        categoryToUpdateID.String(),
+			body:              `{"name":"Updated Category Name"}`,
+			mockUserReturnMid: userForToken,
+			mockUserErrMid:    nil,
+			mockUpdateErr:     nil,
+			expectedStatus:    http.StatusOK,
+			expectedBody:      "Updated Category Name",
 		},
 		{
-			name:           "Failure - Invalid UUID",
-			categoryID:     "not-a-uuid",
-			body:           `{"name":"Update Attempt"}`,
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockUpdateErr:  nil,
-			expectedStatus: http.StatusNotFound,  // <<< CORRECTION: Expect 404
-			expectedBody:   "404 page not found", // <<< CORRECTION: Expect router's 404 message
+			name:              "Failure - Invalid UUID",
+			categoryID:        "not-a-uuid",
+			body:              `{"name":"Update Attempt"}`,
+			mockUserReturnMid: userForToken,
+			mockUserErrMid:    nil,
+			mockUpdateErr:     nil,
+			expectedStatus:    http.StatusNotFound,
+			expectedBody:      "404 page not found",
 		},
 		{
-			name:           "Failure - Invalid JSON",
-			categoryID:     categoryToUpdateID.String(),
-			body:           `{"name":}`, // Invalid JSON
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockUpdateErr:  nil,
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"invalid request body"}`,
+			name:              "Failure - Invalid JSON",
+			categoryID:        categoryToUpdateID.String(),
+			body:              `{"name":}`,
+			mockUserReturnMid: userForToken,
+			mockUserErrMid:    nil,
+			mockUpdateErr:     nil,
+			expectedStatus:    http.StatusBadRequest,
+			expectedBody:      `{"error":"invalid request body"}`,
 		},
 		{
-			name:           "Failure - Missing Name",
-			categoryID:     categoryToUpdateID.String(),
-			body:           `{}`, // Empty body
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockUpdateErr:  nil,
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"category name is required"}`,
+			name:              "Failure - Missing Name",
+			categoryID:        categoryToUpdateID.String(),
+			body:              `{}`,
+			mockUserReturnMid: userForToken,
+			mockUserErrMid:    nil,
+			mockUpdateErr:     nil,
+			expectedStatus:    http.StatusBadRequest,
+			expectedBody:      `{"error":"category name is required"}`,
 		},
 		{
-			name:           "Failure - Category Not Found",
-			categoryID:     categoryToUpdateID.String(),
-			body:           `{"name":"Update Attempt"}`,
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockUpdateErr:  categories.ErrCategoryNotFound,
-			expectedStatus: http.StatusNotFound,
-			expectedBody:   `{"error":"category not found"}`,
+			name:              "Failure - Category Not Found",
+			categoryID:        categoryToUpdateID.String(),
+			body:              `{"name":"Update Attempt"}`,
+			mockUserReturnMid: userForToken,
+			mockUserErrMid:    nil,
+			mockUpdateErr:     categories.ErrCategoryNotFound,
+			expectedStatus:    http.StatusNotFound,
+			expectedBody:      `{"error":"category not found"}`,
 		},
 		{
-			name:           "Failure - Name Already Exists",
-			categoryID:     categoryToUpdateID.String(),
-			body:           `{"name":"Existing Name"}`,
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockUpdateErr:  categories.ErrCategoryNameExists,
-			expectedStatus: http.StatusConflict,
-			expectedBody:   `{"error":"category name already exists"}`,
+			name:              "Failure - Name Already Exists",
+			categoryID:        categoryToUpdateID.String(),
+			body:              `{"name":"Existing Name"}`,
+			mockUserReturnMid: userForToken,
+			mockUserErrMid:    nil,
+			mockUpdateErr:     categories.ErrCategoryNameExists,
+			expectedStatus:    http.StatusConflict,
+			expectedBody:      `{"error":"category name already exists"}`,
 		},
 		{
-			name:           "Failure - Repo Update Error",
-			categoryID:     categoryToUpdateID.String(),
-			body:           `{"name":"Update Attempt"}`,
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockUpdateErr:  errors.New("db update failed"),
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   `{"error":"failed to update category"}`,
+			name:              "Failure - Repo Update Error",
+			categoryID:        categoryToUpdateID.String(),
+			body:              `{"name":"Update Attempt"}`,
+			mockUserReturnMid: userForToken,
+			mockUserErrMid:    nil,
+			mockUpdateErr:     errors.New("db update failed"),
+			expectedStatus:    http.StatusInternalServerError,
+			expectedBody:      `{"error":"failed to update category"}`,
 		},
 		{
-			name:           "Failure - Middleware User Check Fails",
-			categoryID:     categoryToUpdateID.String(),
-			body:           `{"name":"Update Attempt"}`,
-			mockUserReturn: nil,
-			mockUserErr:    users.ErrUserNotFound,
-			mockUpdateErr:  nil,
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   `{"error":"user associated with token not found"}`,
+			name:              "Failure - Middleware User Check Fails",
+			categoryID:        categoryToUpdateID.String(),
+			body:              `{"name":"Update Attempt"}`,
+			mockUserReturnMid: nil,
+			mockUserErrMid:    users.ErrUserNotFound,
+			mockUpdateErr:     nil,
+			expectedStatus:    http.StatusUnauthorized,
+			expectedBody:      `{"error":"user associated with token not found"}`,
 		},
 		{
-			name:           "Failure - No Auth Token",
-			categoryID:     categoryToUpdateID.String(),
-			body:           `{"name":"Update Attempt"}`,
-			mockUserReturn: nil,
-			mockUserErr:    nil,
-			mockUpdateErr:  nil,
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   `{"error":"authorization header required"}`, // <<< CORRECTION: Actual middleware message
+			name:              "Failure - No Auth Token",
+			categoryID:        categoryToUpdateID.String(),
+			body:              `{"name":"Update Attempt"}`,
+			mockUserReturnMid: nil,
+			mockUserErrMid:    nil,
+			mockUpdateErr:     nil,
+			expectedStatus:    http.StatusUnauthorized,
+			expectedBody:      `{"error":"authorization header required"}`, // <<< CORRECTION: Actual middleware message
 		},
 	}
 
@@ -410,11 +411,11 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 
 			// Mock middleware user check only if the UUID is valid AND we are not testing the "No Auth Token" case directly
 			if tc.categoryID != "not-a-uuid" && tc.expectedBody != `{"error":"authorization header required"}` {
-				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturnMid, tc.mockUserErrMid).Once()
 			}
 
 			// Mock category repo update (only if middleware/validation/parsing passes)
-			if tc.categoryID != "not-a-uuid" && tc.mockUserErr == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
+			if tc.categoryID != "not-a-uuid" && tc.mockUserErrMid == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
 				parsedID, _ := uuid.Parse(tc.categoryID)
 				mockCategoryRepo.On("Update", mock.Anything, parsedID, mock.AnythingOfType("*models.Category")).
 					Return(func(ctx context.Context, id uuid.UUID, c *models.Category) *models.Category {
@@ -449,69 +450,70 @@ func TestCategoryHandler_DeleteCategory(t *testing.T) {
 	categoryToDeleteID := uuid.New()
 	testJwtSecret := "test-secret-for-jwt-please-change"
 	testToken := generateTestToken(testUserID, testJwtSecret)
+	userForToken := &models.User{ID: testUserID} // Define user for token once
 
 	tests := []struct {
-		name           string
-		categoryID     string
-		mockUserReturn *models.User
-		mockUserErr    error
-		mockDeleteErr  error
-		expectedStatus int
-		expectedBody   string // Usually empty for No Content, but check error messages
+		name              string
+		categoryID        string
+		mockUserReturnMid *models.User // Renamed
+		mockUserErrMid    error        // Renamed
+		mockDeleteErr     error
+		expectedStatus    int
+		expectedBody      string
 	}{
 		{
-			name:           "Success",
-			categoryID:     categoryToDeleteID.String(),
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockDeleteErr:  nil,
-			expectedStatus: http.StatusNoContent,
-			expectedBody:   "", // No body on success
+			name:              "Success",
+			categoryID:        categoryToDeleteID.String(),
+			mockUserReturnMid: userForToken, // Corrected
+			mockUserErrMid:    nil,          // Corrected
+			mockDeleteErr:     nil,
+			expectedStatus:    http.StatusNoContent,
+			expectedBody:      "",
 		},
 		{
-			name:           "Failure - Invalid UUID",
-			categoryID:     "not-a-uuid",
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockDeleteErr:  nil,                  // Delete won't be called
-			expectedStatus: http.StatusNotFound,  // <<< CORRECTION: Expect 404
-			expectedBody:   "404 page not found", // <<< CORRECTION: Expect router's 404 message
+			name:              "Failure - Invalid UUID",
+			categoryID:        "not-a-uuid",
+			mockUserReturnMid: userForToken, // Corrected
+			mockUserErrMid:    nil,          // Corrected
+			mockDeleteErr:     nil,
+			expectedStatus:    http.StatusNotFound,
+			expectedBody:      "404 page not found",
 		},
 		{
-			name:           "Failure - Category Not Found",
-			categoryID:     categoryToDeleteID.String(),
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockDeleteErr:  categories.ErrCategoryNotFound,
-			expectedStatus: http.StatusNotFound,
-			expectedBody:   `{"error":"category not found"}`,
+			name:              "Failure - Category Not Found",
+			categoryID:        categoryToDeleteID.String(),
+			mockUserReturnMid: userForToken, // Corrected
+			mockUserErrMid:    nil,          // Corrected
+			mockDeleteErr:     categories.ErrCategoryNotFound,
+			expectedStatus:    http.StatusNotFound,
+			expectedBody:      `{"error":"category not found"}`,
 		},
 		{
-			name:           "Failure - Repo Delete Error",
-			categoryID:     categoryToDeleteID.String(),
-			mockUserReturn: &models.User{ID: testUserID},
-			mockUserErr:    nil,
-			mockDeleteErr:  errors.New("db delete failed"),
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   `{"error":"failed to delete category"}`,
+			name:              "Failure - Repo Delete Error",
+			categoryID:        categoryToDeleteID.String(),
+			mockUserReturnMid: userForToken, // Corrected
+			mockUserErrMid:    nil,          // Corrected
+			mockDeleteErr:     errors.New("db delete failed"),
+			expectedStatus:    http.StatusInternalServerError,
+			expectedBody:      `{"error":"failed to delete category"}`,
 		},
 		{
-			name:           "Failure - Middleware User Check Fails",
-			categoryID:     categoryToDeleteID.String(),
-			mockUserReturn: nil,
-			mockUserErr:    users.ErrUserNotFound,
-			mockDeleteErr:  nil,
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   `{"error":"user associated with token not found"}`,
+			name:              "Failure - Middleware User Check Fails",
+			categoryID:        categoryToDeleteID.String(),
+			mockUserReturnMid: nil,                   // Corrected
+			mockUserErrMid:    users.ErrUserNotFound, // Corrected
+			mockDeleteErr:     nil,
+			expectedStatus:    http.StatusUnauthorized,
+			expectedBody:      `{"error":"user associated with token not found"}`,
 		},
 		{
-			name:           "Failure - No Auth Token",
-			categoryID:     categoryToDeleteID.String(),
-			mockUserReturn: nil,
-			mockUserErr:    nil,
-			mockDeleteErr:  nil,
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   `{"error":"authorization header required"}`, // <<< CORRECTION: Actual middleware message
+			name:              "Failure - No Auth Token",
+			categoryID:        categoryToDeleteID.String(),
+			mockUserReturnMid: nil, // Corrected
+			mockUserErrMid:    nil, // Corrected
+			mockDeleteErr:     nil,
+			expectedStatus:    http.StatusUnauthorized,
+			expectedBody:      `{"error":"authorization header required"}`,
 		},
 	}
 
@@ -523,11 +525,11 @@ func TestCategoryHandler_DeleteCategory(t *testing.T) {
 
 			// Mock middleware user check only if the UUID is valid AND we are not testing the "No Auth Token" case directly
 			if tc.categoryID != "not-a-uuid" && tc.expectedBody != `{"error":"authorization header required"}` {
-				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturnMid, tc.mockUserErrMid).Once() // Corrected
 			}
 
 			// Mock category repo delete (only if middleware/parsing passes)
-			if tc.categoryID != "not-a-uuid" && tc.mockUserErr == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
+			if tc.categoryID != "not-a-uuid" && tc.mockUserErrMid == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized { // Corrected
 				parsedID, _ := uuid.Parse(tc.categoryID)
 				mockCategoryRepo.On("Delete", mock.Anything, parsedID).Return(tc.mockDeleteErr).Once()
 			}

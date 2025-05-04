@@ -246,18 +246,18 @@ func TestUserHandler_ListAddresses(t *testing.T) {
 			// Setup inside t.Run
 			mockUserRepo, mockAddressRepo, _, _, router := setupUserHandlerTest(t)
 
-			// Mock middleware check (only if token is expected)
-			if tc.expectedBody != `{"error":"authorization header required"}` {
+			// Mock middleware check (only if token is expected and UserID is valid format)
+			if tc.targetUserIDStr != "not-a-uuid" && tc.expectedBody != `{"error":"authorization header required"}` {
 				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturnMid, tc.mockUserErrMid).Once()
 			}
 
 			// Mock address repo call (only if middleware succeeds and user is authorized)
-			parsedTargetID, parseErr := uuid.Parse(tc.targetUserIDStr)
+			parsedTargetID, _ := uuid.Parse(tc.targetUserIDStr)
 			if tc.mockUserErrMid == nil &&
 				tc.expectedBody != `{"error":"authorization header required"}` &&
 				tc.expectedStatus != http.StatusForbidden &&
 				tc.expectedStatus != http.StatusBadRequest &&
-				parseErr == nil {
+				tc.targetUserIDStr != "not-a-uuid" {
 				mockAddressRepo.On("FindByUserID", mock.Anything, parsedTargetID).Return(tc.mockAddrReturn, tc.mockAddrErr).Once()
 			}
 
