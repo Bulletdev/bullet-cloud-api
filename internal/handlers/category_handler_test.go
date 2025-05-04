@@ -102,7 +102,6 @@ func TestCategoryHandler_GetAllCategories(t *testing.T) {
 }
 
 func TestCategoryHandler_GetCategory(t *testing.T) {
-	mockRepo, _, _, _, router := setupCategoryTest(t)
 	testID := uuid.New()
 	foundCategory := models.Category{ID: testID, Name: "Specific Category", CreatedAt: time.Now(), UpdatedAt: time.Now()}
 
@@ -150,10 +149,12 @@ func TestCategoryHandler_GetCategory(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Moved setup inside t.Run for isolation
+			mockRepo, _, _, _, router := setupCategoryTest(t)
+
 			// Setup mock expectation only if the UUID is valid
 			if tc.categoryID != "not-a-uuid" {
 				parsedID, _ := uuid.Parse(tc.categoryID)
-				// Use Once() unless mock isn't expected to be called
 				mockRepo.On("FindByID", mock.Anything, parsedID).Return(tc.mockReturn, tc.mockError).Once()
 			}
 
@@ -172,7 +173,6 @@ func TestCategoryHandler_GetCategory(t *testing.T) {
 // --- Tests for Protected Routes (Require Authentication) ---
 
 func TestCategoryHandler_CreateCategory(t *testing.T) {
-	mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
 	testUserID := uuid.New()
 	testJwtSecret := "test-secret-for-jwt-please-change"
 	testToken := generateTestToken(testUserID, testJwtSecret)
@@ -253,9 +253,11 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Moved setup inside t.Run for isolation
+			mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
+
 			// Mock middleware user check (only if token is expected)
 			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
-				// Use Once() for middleware mock
 				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
 			}
 
@@ -263,15 +265,14 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 			if tc.mockUserErr == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
 				mockCategoryRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.Category")).
 					Return(func(ctx context.Context, c *models.Category) *models.Category {
-						if tc.mockCreateErr != nil { // <<< CORRECTION: Return nil if error
+						if tc.mockCreateErr != nil {
 							return nil
 						}
-						// Simulate DB assigning ID and timestamps
 						c.ID = uuid.New()
 						c.CreatedAt = time.Now()
 						c.UpdatedAt = c.CreatedAt
 						return c
-					}, tc.mockCreateErr).Once() // <<< CORRECTION: Use Once()
+					}, tc.mockCreateErr).Once()
 			}
 
 			req := httptest.NewRequest(http.MethodPost, "/api/categories", strings.NewReader(tc.body))
@@ -294,7 +295,6 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 }
 
 func TestCategoryHandler_UpdateCategory(t *testing.T) {
-	mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
 	testUserID := uuid.New()
 	categoryToUpdateID := uuid.New()
 	testJwtSecret := "test-secret-for-jwt-please-change"
@@ -404,9 +404,12 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Moved setup inside t.Run for isolation
+			mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
+
 			// Mock middleware user check
 			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
-				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once() // <<< CORRECTION: Use Once()
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
 			}
 
 			// Mock category repo update (only if middleware/validation/parsing passes)
@@ -414,14 +417,13 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 				parsedID, _ := uuid.Parse(tc.categoryID)
 				mockCategoryRepo.On("Update", mock.Anything, parsedID, mock.AnythingOfType("*models.Category")).
 					Return(func(ctx context.Context, id uuid.UUID, c *models.Category) *models.Category {
-						if tc.mockUpdateErr != nil { // <<< CORRECTION: Return nil if error
+						if tc.mockUpdateErr != nil {
 							return nil
 						}
-						// Simulate DB updating timestamps
 						c.ID = id
-						c.UpdatedAt = time.Now() // Actual repo only returns UpdatedAt, but mock can return full
+						c.UpdatedAt = time.Now()
 						return c
-					}, tc.mockUpdateErr).Once() // <<< CORRECTION: Use Once()
+					}, tc.mockUpdateErr).Once()
 			}
 
 			req := httptest.NewRequest(http.MethodPut, "/api/categories/"+tc.categoryID, strings.NewReader(tc.body))
@@ -442,7 +444,6 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 }
 
 func TestCategoryHandler_DeleteCategory(t *testing.T) {
-	mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
 	testUserID := uuid.New()
 	categoryToDeleteID := uuid.New()
 	testJwtSecret := "test-secret-for-jwt-please-change"
@@ -515,15 +516,18 @@ func TestCategoryHandler_DeleteCategory(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Moved setup inside t.Run for isolation
+			mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
+
 			// Mock middleware user check
 			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
-				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once() // <<< CORRECTION: Use Once()
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
 			}
 
 			// Mock category repo delete (only if middleware/parsing passes)
 			if tc.categoryID != "not-a-uuid" && tc.mockUserErr == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
 				parsedID, _ := uuid.Parse(tc.categoryID)
-				mockCategoryRepo.On("Delete", mock.Anything, parsedID).Return(tc.mockDeleteErr).Once() // <<< CORRECTION: Use Once()
+				mockCategoryRepo.On("Delete", mock.Anything, parsedID).Return(tc.mockDeleteErr).Once()
 			}
 
 			req := httptest.NewRequest(http.MethodDelete, "/api/categories/"+tc.categoryID, nil)

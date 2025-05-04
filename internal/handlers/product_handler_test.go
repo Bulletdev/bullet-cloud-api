@@ -52,6 +52,7 @@ func setupProductTest(t *testing.T) (*products.MockProductRepository, *users.Moc
 // --- Tests for Public Routes ---
 
 func TestProductHandler_GetAllProducts(t *testing.T) {
+	// Keep setup outside for GetAll as it's simpler
 	mockRepo, _, _, _, router := setupProductTest(t)
 
 	tests := []struct {
@@ -104,7 +105,7 @@ func TestProductHandler_GetAllProducts(t *testing.T) {
 }
 
 func TestProductHandler_GetProduct(t *testing.T) {
-	mockRepo, _, _, _, router := setupProductTest(t)
+	// Removed setup from here
 	testID := uuid.New()
 	foundProduct := models.Product{ID: testID, Name: "Specific Product", Price: 19.99}
 
@@ -152,6 +153,9 @@ func TestProductHandler_GetProduct(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Moved setup inside t.Run for isolation
+			mockRepo, _, _, _, router := setupProductTest(t)
+
 			// Setup mock expectation only if the UUID is valid
 			if tc.productID != "not-a-uuid" {
 				parsedID, _ := uuid.Parse(tc.productID)
@@ -182,7 +186,7 @@ func generateTestToken(userID uuid.UUID, secret string) string {
 }
 
 func TestProductHandler_CreateProduct(t *testing.T) {
-	mockProductRepo, mockUserRepo, _, _, router := setupProductTest(t)
+	// Removed setup from here
 	testUserID := uuid.New()
 	testJwtSecret := "test-secret-for-jwt-please-change"
 	testToken := generateTestToken(testUserID, testJwtSecret)
@@ -263,6 +267,9 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Moved setup inside t.Run for isolation
+			mockProductRepo, mockUserRepo, _, _, router := setupProductTest(t)
+
 			// Mock middleware user check
 			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
 				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
@@ -275,7 +282,6 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 						if tc.mockCreateErr != nil {
 							return nil
 						}
-						// Simulate DB assigning ID and timestamps
 						p.ID = uuid.New()
 						p.CreatedAt = time.Now()
 						p.UpdatedAt = p.CreatedAt
