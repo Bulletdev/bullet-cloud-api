@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -58,14 +59,24 @@ func main() {
 
 	r := setupRoutes(authHandler, userHandler, productHandler, categoryHandler, cartHandler, orderHandler, authMiddleware)
 
-	port := os.Getenv("API_PORT")
+	// --- Determine Port ---
+	port := os.Getenv("PORT") // 1. Check Render's PORT variable
 	if port == "" {
-		port = defaultPort
+		port = cfg.APIPort // 2. Check API_PORT from config (read from .env)
+		if port == "" {
+			port = defaultPort // 3. Use default if none is set
+		}
 	}
+	// Basic validation (optional but recommended)
+	if _, err := strconv.Atoi(port); err != nil {
+		log.Fatalf("Invalid port number: %s", port)
+	}
+	listenAddr := ":" + port
+	// --- End Determine Port ---
 
 	// Configure HTTP server
 	srv := &http.Server{
-		Addr:         ":" + port,
+		Addr:         listenAddr, // Use the determined address
 		Handler:      r,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
