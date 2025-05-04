@@ -137,8 +137,8 @@ func TestProductHandler_GetProduct(t *testing.T) {
 			productID:      "not-a-uuid",
 			mockReturn:     nil, // Mock won't be called
 			mockError:      nil,
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"invalid product ID format"}`,
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   "404 page not found",
 		},
 		{
 			name:           "Failure - Repository Error",
@@ -152,10 +152,10 @@ func TestProductHandler_GetProduct(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Setup mock expectation only if the UUID is valid and repo expected to be called
+			// Setup mock expectation only if the UUID is valid
 			if tc.productID != "not-a-uuid" {
 				parsedID, _ := uuid.Parse(tc.productID)
-				mockRepo.On("FindByID", mock.Anything, parsedID).Return(tc.mockReturn, tc.mockError).Maybe()
+				mockRepo.On("FindByID", mock.Anything, parsedID).Return(tc.mockReturn, tc.mockError).Once()
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "/api/products/"+tc.productID, nil)
@@ -165,7 +165,7 @@ func TestProductHandler_GetProduct(t *testing.T) {
 
 			assert.Equal(t, tc.expectedStatus, rr.Code)
 			assert.Contains(t, rr.Body.String(), tc.expectedBody)
-			mockRepo.AssertExpectations(t) // Maybe() allows call not to happen for invalid UUID test
+			mockRepo.AssertExpectations(t)
 		})
 	}
 }
@@ -250,28 +250,44 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   `{"error":"user associated with token not found"}`,
 		},
+		{
+			name:           "Failure - No Auth Token",
+			body:           `{"name":"No Token Product","price":50.0}`,
+			mockUserReturn: nil,
+			mockUserErr:    nil,
+			mockCreateErr:  nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   `{"error":"authorization header required"}`,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Mock middleware user check
-			mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Maybe()
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
+			}
 
-			// Mock product repo create (only if middleware check is expected to pass)
-			if tc.mockUserErr == nil {
+			// Mock product repo create (only if middleware check is expected to pass and validation is ok)
+			if tc.mockUserErr == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
 				mockProductRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.Product")).
 					Return(func(ctx context.Context, p *models.Product) *models.Product {
+						if tc.mockCreateErr != nil {
+							return nil
+						}
 						// Simulate DB assigning ID and timestamps
 						p.ID = uuid.New()
 						p.CreatedAt = time.Now()
 						p.UpdatedAt = p.CreatedAt
 						return p
-					}, tc.mockCreateErr).Maybe()
+					}, tc.mockCreateErr).Once()
 			}
 
 			req := httptest.NewRequest(http.MethodPost, "/api/products", strings.NewReader(tc.body))
 			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", "Bearer "+testToken)
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization header required"}` {
+				req.Header.Set("Authorization", "Bearer "+testToken)
+			}
 			rr := httptest.NewRecorder()
 
 			router.ServeHTTP(rr, req)

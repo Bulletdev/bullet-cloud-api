@@ -135,13 +135,13 @@ func TestCategoryHandler_GetCategory(t *testing.T) {
 			categoryID:     "not-a-uuid",
 			mockReturn:     nil, // Mock won't be called
 			mockError:      nil,
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"invalid category ID format"}`,
+			expectedStatus: http.StatusNotFound,  // <<< CORRECTION: Expect 404 from router
+			expectedBody:   "404 page not found", // <<< CORRECTION: Expect router's 404 message
 		},
 		{
 			name:           "Failure - Repository Error",
 			categoryID:     testID.String(),
-			mockReturn:     nil,
+			mockReturn:     nil, // <<< CORRECTION: Ensure mock returns nil object on error
 			mockError:      errors.New("db error"),
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"error":"failed to retrieve category"}`,
@@ -150,10 +150,11 @@ func TestCategoryHandler_GetCategory(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Setup mock expectation only if the UUID is valid and repo expected to be called
+			// Setup mock expectation only if the UUID is valid
 			if tc.categoryID != "not-a-uuid" {
 				parsedID, _ := uuid.Parse(tc.categoryID)
-				mockRepo.On("FindByID", mock.Anything, parsedID).Return(tc.mockReturn, tc.mockError).Maybe()
+				// Use Once() unless mock isn't expected to be called
+				mockRepo.On("FindByID", mock.Anything, parsedID).Return(tc.mockReturn, tc.mockError).Once()
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "/api/categories/"+tc.categoryID, nil)
@@ -163,7 +164,7 @@ func TestCategoryHandler_GetCategory(t *testing.T) {
 
 			assert.Equal(t, tc.expectedStatus, rr.Code)
 			assert.Contains(t, rr.Body.String(), tc.expectedBody)
-			mockRepo.AssertExpectations(t) // Maybe() allows call not to happen for invalid UUID test
+			mockRepo.AssertExpectations(t)
 		})
 	}
 }
@@ -245,8 +246,8 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 			mockUserReturn: nil, // Won't be called
 			mockUserErr:    nil,
 			mockCreateErr:  nil,
-			expectedStatus: http.StatusUnauthorized, // Expect unauthorized if no token provided
-			expectedBody:   `{"error":"authorization token required"}`,
+			expectedStatus: http.StatusUnauthorized,                     // Expect unauthorized if no token provided
+			expectedBody:   `{"error":"authorization header required"}`, // <<< CORRECTION: Actual middleware message
 		},
 	}
 
@@ -254,25 +255,29 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Mock middleware user check (only if token is expected)
 			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
-				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Maybe()
+				// Use Once() for middleware mock
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
 			}
 
 			// Mock category repo create (only if middleware check passes and validation passes)
 			if tc.mockUserErr == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
 				mockCategoryRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.Category")).
 					Return(func(ctx context.Context, c *models.Category) *models.Category {
+						if tc.mockCreateErr != nil { // <<< CORRECTION: Return nil if error
+							return nil
+						}
 						// Simulate DB assigning ID and timestamps
 						c.ID = uuid.New()
 						c.CreatedAt = time.Now()
 						c.UpdatedAt = c.CreatedAt
 						return c
-					}, tc.mockCreateErr).Maybe()
+					}, tc.mockCreateErr).Once() // <<< CORRECTION: Use Once()
 			}
 
 			req := httptest.NewRequest(http.MethodPost, "/api/categories", strings.NewReader(tc.body))
 			req.Header.Set("Content-Type", "application/json")
 			// Only add token if the test case expects it (i.e., not the 'No Auth Token' case)
-			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization token required"}` {
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization header required"}` {
 				req.Header.Set("Authorization", "Bearer "+testToken)
 			}
 
@@ -319,11 +324,11 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 			name:           "Failure - Invalid UUID",
 			categoryID:     "not-a-uuid",
 			body:           `{"name":"Update Attempt"}`,
-			mockUserReturn: &models.User{ID: testUserID}, // Middleware runs before ID parsing
+			mockUserReturn: &models.User{ID: testUserID},
 			mockUserErr:    nil,
-			mockUpdateErr:  nil, // Update won't be called
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"invalid category ID format"}`,
+			mockUpdateErr:  nil,
+			expectedStatus: http.StatusNotFound,  // <<< CORRECTION: Expect 404
+			expectedBody:   "404 page not found", // <<< CORRECTION: Expect router's 404 message
 		},
 		{
 			name:           "Failure - Invalid JSON",
@@ -393,7 +398,7 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 			mockUserErr:    nil,
 			mockUpdateErr:  nil,
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   `{"error":"authorization token required"}`,
+			expectedBody:   `{"error":"authorization header required"}`, // <<< CORRECTION: Actual middleware message
 		},
 	}
 
@@ -401,7 +406,7 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Mock middleware user check
 			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
-				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Maybe()
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once() // <<< CORRECTION: Use Once()
 			}
 
 			// Mock category repo update (only if middleware/validation/parsing passes)
@@ -409,16 +414,19 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 				parsedID, _ := uuid.Parse(tc.categoryID)
 				mockCategoryRepo.On("Update", mock.Anything, parsedID, mock.AnythingOfType("*models.Category")).
 					Return(func(ctx context.Context, id uuid.UUID, c *models.Category) *models.Category {
+						if tc.mockUpdateErr != nil { // <<< CORRECTION: Return nil if error
+							return nil
+						}
 						// Simulate DB updating timestamps
 						c.ID = id
 						c.UpdatedAt = time.Now() // Actual repo only returns UpdatedAt, but mock can return full
 						return c
-					}, tc.mockUpdateErr).Maybe()
+					}, tc.mockUpdateErr).Once() // <<< CORRECTION: Use Once()
 			}
 
 			req := httptest.NewRequest(http.MethodPut, "/api/categories/"+tc.categoryID, strings.NewReader(tc.body))
 			req.Header.Set("Content-Type", "application/json")
-			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization token required"}` {
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization header required"}` {
 				req.Header.Set("Authorization", "Bearer "+testToken)
 			}
 
@@ -463,9 +471,9 @@ func TestCategoryHandler_DeleteCategory(t *testing.T) {
 			categoryID:     "not-a-uuid",
 			mockUserReturn: &models.User{ID: testUserID},
 			mockUserErr:    nil,
-			mockDeleteErr:  nil, // Delete won't be called
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"invalid category ID format"}`,
+			mockDeleteErr:  nil,                  // Delete won't be called
+			expectedStatus: http.StatusNotFound,  // <<< CORRECTION: Expect 404
+			expectedBody:   "404 page not found", // <<< CORRECTION: Expect router's 404 message
 		},
 		{
 			name:           "Failure - Category Not Found",
@@ -501,7 +509,7 @@ func TestCategoryHandler_DeleteCategory(t *testing.T) {
 			mockUserErr:    nil,
 			mockDeleteErr:  nil,
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   `{"error":"authorization token required"}`,
+			expectedBody:   `{"error":"authorization header required"}`, // <<< CORRECTION: Actual middleware message
 		},
 	}
 
@@ -509,17 +517,17 @@ func TestCategoryHandler_DeleteCategory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Mock middleware user check
 			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
-				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Maybe()
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once() // <<< CORRECTION: Use Once()
 			}
 
 			// Mock category repo delete (only if middleware/parsing passes)
 			if tc.categoryID != "not-a-uuid" && tc.mockUserErr == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
 				parsedID, _ := uuid.Parse(tc.categoryID)
-				mockCategoryRepo.On("Delete", mock.Anything, parsedID).Return(tc.mockDeleteErr).Maybe()
+				mockCategoryRepo.On("Delete", mock.Anything, parsedID).Return(tc.mockDeleteErr).Once() // <<< CORRECTION: Use Once()
 			}
 
 			req := httptest.NewRequest(http.MethodDelete, "/api/categories/"+tc.categoryID, nil)
-			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization token required"}` {
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization header required"}` {
 				req.Header.Set("Authorization", "Bearer "+testToken)
 			}
 
