@@ -40,7 +40,12 @@ func main() {
 	addressRepo := addresses.NewPostgresAddressRepository(dbPool)
 	cartRepo := cart.NewPostgresCartRepository(dbPool)
 	orderRepo := orders.NewPostgresOrderRepository(dbPool)
-	authHandler := handlers.NewAuthHandler(userRepo, cfg.JWTSecret, defaultJWTExpiry)
+
+	// Instantiate the password hasher
+	hasher := auth.NewBcryptPasswordHasher()
+
+	// Pass the hasher to NewAuthHandler
+	authHandler := handlers.NewAuthHandler(userRepo, hasher, cfg.JWTSecret, defaultJWTExpiry)
 	userHandler := handlers.NewUserHandler(userRepo, addressRepo)
 	productHandler := handlers.NewProductHandler(productRepo)
 	categoryHandler := handlers.NewCategoryHandler(categoryRepo)
