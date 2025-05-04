@@ -19,9 +19,7 @@ const testJwtSecret = "test-secret-for-jwt-please-change" // Consistent secret f
 // - AuthMiddleware (configured with test secret and user repo)
 // - Mux Router
 func setupBaseTest(t *testing.T) (*users.MockUserRepository, *auth.Middleware, *mux.Router) {
-	t * testing.T // Ensure t is used or remove if not needed directly
 	mockUserRepo := new(users.MockUserRepository)
-	// Use a fixed expiry for consistency in tests, can be overridden if needed
 	authMiddleware := auth.NewMiddleware(testJwtSecret, mockUserRepo)
 	router := mux.NewRouter()
 
