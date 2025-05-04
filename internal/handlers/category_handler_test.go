@@ -411,8 +411,8 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
 
-			// Mock middleware user check
-			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
+			// Mock middleware user check only if the UUID is valid AND we are not testing the "No Auth Token" case directly
+			if tc.categoryID != "not-a-uuid" && tc.expectedBody != `{"error":"authorization header required"}` {
 				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
 			}
 
@@ -524,8 +524,8 @@ func TestCategoryHandler_DeleteCategory(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
 
-			// Mock middleware user check
-			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
+			// Mock middleware user check only if the UUID is valid AND we are not testing the "No Auth Token" case directly
+			if tc.categoryID != "not-a-uuid" && tc.expectedBody != `{"error":"authorization header required"}` {
 				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
 			}
 

@@ -424,8 +424,8 @@ func TestProductHandler_UpdateProduct(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockProductRepo, mockUserRepo, _, _, router := setupProductTest(t)
 
-			// Mock middleware user check
-			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
+			// Mock middleware user check only if the UUID is valid AND we are not testing the "No Auth Token" case directly
+			if tc.productID != "not-a-uuid" && tc.expectedBody != `{"error":"authorization header required"}` {
 				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
 			}
 
@@ -538,8 +538,8 @@ func TestProductHandler_DeleteProduct(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockProductRepo, mockUserRepo, _, _, router := setupProductTest(t)
 
-			// Mock middleware user check
-			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
+			// Mock middleware user check only if the UUID is valid AND we are not testing the "No Auth Token" case directly
+			if tc.productID != "not-a-uuid" && tc.expectedBody != `{"error":"authorization header required"}` {
 				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
 			}
 
