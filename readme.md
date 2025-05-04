@@ -4,7 +4,7 @@
 [![Go](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/go.yml/badge.svg)](https://github.com/Bulletdev/bullet-cloud-api/actions/workflows/go.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Bulletdev_Arremate-certo&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Bulletdev_Arremate-certo)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Bulletdev_Arremate-certo&metric=bugs)](https://sonarcloud.io/summary/new_code?id=Bulletdev_Arremate-certo)
-<img src="https://img.shields.io/badge/status-Em%20Desenvolvimento-Orange"> 
+<img src="https://img.shields.io/badge/status-Produção-Orange"> 
 </p>     
    
 # API RESTful em Go para E-commerce (Bullet Cloud API)
