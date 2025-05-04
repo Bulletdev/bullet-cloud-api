@@ -1,99 +1,197 @@
 package handlers
 
 import (
-	"encoding/json"
+	"bullet-cloud-api/internal/models"
+	"bullet-cloud-api/internal/products" // Product Repository
+	"bullet-cloud-api/internal/webutils" // JSON Helpers
+	"errors"
 	"net/http"
 
-	"bullet-cloud-api/internal/models"
-
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
-var productRepo = models.NewProductRepository()
+// ProductHandler handles product-related requests.
+type ProductHandler struct {
+	ProductRepo products.ProductRepository
+}
 
-func HealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+// NewProductHandler creates a new ProductHandler.
+func NewProductHandler(productRepo products.ProductRepository) *ProductHandler {
+	return &ProductHandler{ProductRepo: productRepo}
+}
+
+// --- Request Structs (for Create/Update) ---
+
+type CreateProductRequest struct {
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Price       float64    `json:"price"`
+	CategoryID  *uuid.UUID `json:"category_id"` // Optional
+}
+
+type UpdateProductRequest struct {
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Price       float64    `json:"price"`
+	CategoryID  *uuid.UUID `json:"category_id"` // Optional
+}
+
+// --- Handlers ---
+
+// CreateProduct handles POST requests to create a new product.
+// This typically requires authentication.
+func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	var req CreateProductRequest
+	if err := webutils.ReadJSON(r, &req); err != nil {
+		webutils.ErrorJSON(w, errors.New("invalid request body"), http.StatusBadRequest)
+		return
+	}
+
+	// Basic Validation
+	if req.Name == "" || req.Price < 0 {
+		webutils.ErrorJSON(w, errors.New("product name is required and price must be non-negative"), http.StatusBadRequest)
+		return
+	}
+
+	newProduct := &models.Product{
+		Name:        req.Name,
+		Description: req.Description,
+		Price:       req.Price,
+		CategoryID:  req.CategoryID,
+	}
+
+	createdProduct, err := h.ProductRepo.Create(r.Context(), newProduct)
 	if err != nil {
+		// TODO: Handle specific DB errors (e.g., FK violation)
+		webutils.ErrorJSON(w, errors.New("failed to create product"), http.StatusInternalServerError)
 		return
 	}
+
+	webutils.WriteJSON(w, http.StatusCreated, createdProduct)
 }
 
-func GetAllProducts(w http.ResponseWriter, r *http.Request) {
-	products := productRepo.GetAll()
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(products)
+// GetAllProducts handles GET requests to list all products.
+// This is often a public endpoint.
+func (h *ProductHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
+	// TODO: Add pagination and filtering based on query parameters (r.URL.Query())
+	productList, err := h.ProductRepo.FindAll(r.Context())
 	if err != nil {
+		webutils.ErrorJSON(w, errors.New("failed to retrieve products"), http.StatusInternalServerError)
 		return
 	}
+
+	webutils.WriteJSON(w, http.StatusOK, productList)
 }
 
-func CreateProduct(w http.ResponseWriter, r *http.Request) {
-	var product models.Product
-
-	if err := json.NewDecoder(r.Body).Decode(&product); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if err := productRepo.Create(&product); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(product); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func GetProduct(w http.ResponseWriter, r *http.Request) {
+// GetProduct handles GET requests for a specific product by ID.
+// This is often a public endpoint.
+func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["id"]
+	idStr, ok := vars["id"]
+	if !ok {
+		webutils.ErrorJSON(w, errors.New("product ID is required"), http.StatusBadRequest)
+		return
+	}
 
-	product, err := productRepo.GetByID(id)
+	productID, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		webutils.ErrorJSON(w, errors.New("invalid product ID format"), http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(product)
+	product, err := h.ProductRepo.FindByID(r.Context(), productID)
 	if err != nil {
+		if errors.Is(err, products.ErrProductNotFound) {
+			webutils.ErrorJSON(w, err, http.StatusNotFound)
+		} else {
+			webutils.ErrorJSON(w, errors.New("failed to retrieve product"), http.StatusInternalServerError)
+		}
 		return
 	}
+
+	webutils.WriteJSON(w, http.StatusOK, product)
 }
 
-func UpdateProduct(w http.ResponseWriter, r *http.Request) {
+// UpdateProduct handles PUT requests to update an existing product.
+// This typically requires authentication.
+func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["id"]
-
-	var updatedProduct models.Product
-	if err := json.NewDecoder(r.Body).Decode(&updatedProduct); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	idStr, ok := vars["id"]
+	if !ok {
+		webutils.ErrorJSON(w, errors.New("product ID is required"), http.StatusBadRequest)
 		return
 	}
 
-	if err := productRepo.Update(id, updatedProduct); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	productID, err := uuid.Parse(idStr)
+	if err != nil {
+		webutils.ErrorJSON(w, errors.New("invalid product ID format"), http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(updatedProduct); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	var req UpdateProductRequest
+	if err := webutils.ReadJSON(r, &req); err != nil {
+		webutils.ErrorJSON(w, errors.New("invalid request body"), http.StatusBadRequest)
+		return
 	}
+
+	// Basic Validation
+	if req.Name == "" || req.Price < 0 {
+		webutils.ErrorJSON(w, errors.New("product name is required and price must be non-negative"), http.StatusBadRequest)
+		return
+	}
+
+	productToUpdate := &models.Product{
+		// ID is set by the repository based on the URL param
+		Name:        req.Name,
+		Description: req.Description,
+		Price:       req.Price,
+		CategoryID:  req.CategoryID,
+	}
+
+	updatedProduct, err := h.ProductRepo.Update(r.Context(), productID, productToUpdate)
+	if err != nil {
+		if errors.Is(err, products.ErrProductNotFound) {
+			webutils.ErrorJSON(w, err, http.StatusNotFound)
+		} else {
+			// TODO: Handle other specific errors like FK violation
+			webutils.ErrorJSON(w, errors.New("failed to update product"), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	webutils.WriteJSON(w, http.StatusOK, updatedProduct)
 }
 
-func DeleteProduct(w http.ResponseWriter, r *http.Request) {
+// DeleteProduct handles DELETE requests for a specific product.
+// This typically requires authentication.
+func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["id"]
-
-	if err := productRepo.Delete(id); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	idStr, ok := vars["id"]
+	if !ok {
+		webutils.ErrorJSON(w, errors.New("product ID is required"), http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	productID, err := uuid.Parse(idStr)
+	if err != nil {
+		webutils.ErrorJSON(w, errors.New("invalid product ID format"), http.StatusBadRequest)
+		return
+	}
+
+	err = h.ProductRepo.Delete(r.Context(), productID)
+	if err != nil {
+		if errors.Is(err, products.ErrProductNotFound) {
+			webutils.ErrorJSON(w, err, http.StatusNotFound)
+		} else {
+			webutils.ErrorJSON(w, errors.New("failed to delete product"), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent) // 204 No Content on successful deletion
 }
+
+// TODO: Implement handlers for other product endpoints:
+// GetFeaturedProducts (GET /api/products/featured)
+// GetProductsByCategory (GET /api/products/category/{categoryId})
