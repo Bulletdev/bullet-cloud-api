@@ -20,19 +20,28 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// --- Test Setup Helper ---
+// --- Test Setup Helpers ---
 
-// setupProductTest creates mock repositories, handler, middleware, and router for tests.
-func setupProductTest(t *testing.T) (*products.MockProductRepository, *users.MockUserRepository, *handlers.ProductHandler, *auth.Middleware, *mux.Router) {
-	mockProductRepo := new(products.MockProductRepository)
-	mockUserRepo := new(users.MockUserRepository) // Needed for middleware
-	productHandler := handlers.NewProductHandler(mockProductRepo)
-
+// setupBaseTest creates common mocks and components for handler tests.
+func setupBaseTest(t *testing.T) (*users.MockUserRepository, *auth.Middleware, *mux.Router) {
+	mockUserRepo := new(users.MockUserRepository)
 	// Use a fixed test secret for predictable tokens
 	testJwtSecret := "test-secret-for-jwt-please-change"
 	authMiddleware := auth.NewMiddleware(testJwtSecret, mockUserRepo)
 
 	router := mux.NewRouter()
+
+	return mockUserRepo, authMiddleware, router
+}
+
+// setupProductTest creates mock repositories, handler, middleware, and router for tests.
+func setupProductTest(t *testing.T) (*products.MockProductRepository, *users.MockUserRepository, *handlers.ProductHandler, *auth.Middleware, *mux.Router) {
+	mockProductRepo := new(products.MockProductRepository)
+	// Call the base setup
+	mockUserRepo, authMiddleware, router := setupBaseTest(t)
+
+	productHandler := handlers.NewProductHandler(mockProductRepo)
+
 	apiV1 := router.PathPrefix("/api").Subrouter()
 
 	// Public routes

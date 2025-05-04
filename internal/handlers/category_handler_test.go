@@ -23,14 +23,11 @@ import (
 // setupCategoryTest creates mock repositories, handler, middleware, and router for category tests.
 func setupCategoryTest(t *testing.T) (*categories.MockCategoryRepository, *users.MockUserRepository, *handlers.CategoryHandler, *auth.Middleware, *mux.Router) {
 	mockCategoryRepo := new(categories.MockCategoryRepository)
-	mockUserRepo := new(users.MockUserRepository) // Needed for middleware
+	// Call the base setup
+	mockUserRepo, authMiddleware, router := setupBaseTest(t) // setupBaseTest is in the same package
+
 	categoryHandler := handlers.NewCategoryHandler(mockCategoryRepo)
 
-	// Use a fixed test secret for predictable tokens
-	testJwtSecret := "test-secret-for-jwt-please-change" // Use the same secret as product tests for consistency
-	authMiddleware := auth.NewMiddleware(testJwtSecret, mockUserRepo)
-
-	router := mux.NewRouter()
 	apiV1 := router.PathPrefix("/api").Subrouter()
 
 	// Public category routes
