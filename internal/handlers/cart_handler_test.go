@@ -5,8 +5,7 @@ import (
 	"bullet-cloud-api/internal/cart"
 	"bullet-cloud-api/internal/handlers"
 	"bullet-cloud-api/internal/models"
-	"bullet-cloud-api/internal/products"
-	"errors"
+	"bullet-cloud-api/internal/users"
 	"fmt"
 	"net/http"
 	"strings"
@@ -43,106 +42,108 @@ func setupCartTest(t *testing.T) (*MockCartRepository, *MockUserRepository, *Moc
 
 // TestCartHandler_GetCart tests the GET /api/cart endpoint
 func TestCartHandler_GetCart(t *testing.T) {
-	// Explicitly capture all 9 return values, using _ for unused ctx, rr, etc.
-	_, _, router, baseMockUserRepo, baseMockProductRepo, _, _, baseMockCartRepo, token := setupBaseTest(t)
-
-	// Handler created once, CartRepo will be updated in t.Run
-	cartHandler := handlers.NewCartHandler(baseMockCartRepo, baseMockProductRepo)
-
-	claims, err := auth.ValidateToken(token, testJwtSecret)
-	require.NoError(t, err)
-	testUserID := claims.UserID
+	testUserID := uuid.New()
 	testCart := &models.Cart{ID: uuid.New(), UserID: testUserID}
 	testItems := []models.CartItem{
 		{CartID: testCart.ID, ProductID: uuid.New(), Quantity: 2, Price: 10.50},
 		{CartID: testCart.ID, ProductID: uuid.New(), Quantity: 1, Price: 25.00},
 	}
 
-	// Route registered once
-	router.Handle("/api/cart", auth.NewMiddleware(testJwtSecret, baseMockUserRepo).Authenticate(http.HandlerFunc(cartHandler.GetCart))).Methods("GET")
-
 	tests := []struct {
 		name                 string
-		mockGetOrCreateCart  func(*MockCartRepository) // Pass mock repo
-		mockGetItems         func(*MockCartRepository) // Pass mock repo
+		mocksSetup           func(mockCartRepo *MockCartRepository) // Simplified mock setup
 		expectedStatus       int
 		expectedBodyContains string
 	}{
 		{
 			name: "Success - Existing Cart with Items",
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Once()
-			},
-			mockGetItems: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetCartItems", mock.Anything, testCart.ID).Return(testItems, nil).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository) {
+				mockGetOrCreateCartSuccess(mockCartRepo, testUserID, testCart)
+				mockGetCartItemsSuccess(mockCartRepo, testCart.ID, testItems)
 			},
 			expectedStatus:       http.StatusOK,
 			expectedBodyContains: fmt.Sprintf(`{"cart":{"id":"%s","user_id":"%s","created_at":"0001-01-01T00:00:00Z","updated_at":"0001-01-01T00:00:00Z"},"items":[{"id":"00000000-0000-0000-0000-000000000000","cart_id":"%s","product_id":"%s","quantity":%d,"price":%.2f,"created_at":"0001-01-01T00:00:00Z","updated_at":"0001-01-01T00:00:00Z"},{"id":"00000000-0000-0000-0000-000000000000","cart_id":"%s","product_id":"%s","quantity":%d,"price":%.2f,"created_at":"0001-01-01T00:00:00Z","updated_at":"0001-01-01T00:00:00Z"}],"total":%.2f}`, testCart.ID, testUserID, testItems[0].CartID, testItems[0].ProductID, testItems[0].Quantity, testItems[0].Price, testItems[1].CartID, testItems[1].ProductID, testItems[1].Quantity, testItems[1].Price, (testItems[0].Price*float64(testItems[0].Quantity))+(testItems[1].Price*float64(testItems[1].Quantity))),
 		},
 		{
 			name: "Success - New Cart (Empty)",
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Once()
-			},
-			mockGetItems: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetCartItems", mock.Anything, testCart.ID).Return([]models.CartItem{}, nil).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository) {
+				mockGetOrCreateCartSuccess(mockCartRepo, testUserID, testCart)
+				mockGetCartItemsSuccess(mockCartRepo, testCart.ID, []models.CartItem{})
 			},
 			expectedStatus:       http.StatusOK,
 			expectedBodyContains: fmt.Sprintf(`{"cart": {"id":"%s", "user_id":"%s", "created_at":"0001-01-01T00:00:00Z", "updated_at":"0001-01-01T00:00:00Z"}, "items": [], "total": 0.00}`, testCart.ID, testUserID),
 		},
 		{
 			name: "Error - GetOrCreateCart Fails",
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(nil, errors.New("db error")).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository) {
+				mockGetOrCreateCartError(mockCartRepo, testUserID)
 			},
-			mockGetItems:         func(mockCartRepo *MockCartRepository) { /* Not called */ },
 			expectedStatus:       http.StatusInternalServerError,
 			expectedBodyContains: `{"error":"failed to get or create cart"}`,
 		},
 		{
 			name: "Error - GetCartItems Fails",
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Once()
-			},
-			mockGetItems: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetCartItems", mock.Anything, testCart.ID).Return(nil, errors.New("db item error")).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository) {
+				mockGetOrCreateCartSuccess(mockCartRepo, testUserID, testCart)
+				mockGetCartItemsError(mockCartRepo, testCart.ID)
 			},
 			expectedStatus:       http.StatusInternalServerError,
 			expectedBodyContains: `{"error":"failed to retrieve cart items"}`,
+		},
+		// Add test case for middleware failure
+		{
+			name:                 "Error - Middleware User Check Fails",
+			mocksSetup:           func(mockCartRepo *MockCartRepository) { /* Cart repo not called */ },
+			expectedStatus:       http.StatusUnauthorized,
+			expectedBodyContains: `{"error":"user associated with token not found"}`,
+		},
+		// Add test case for missing token
+		{
+			name:                 "Error - No Auth Token",
+			mocksSetup:           func(mockCartRepo *MockCartRepository) { /* Cart repo not called */ },
+			expectedStatus:       http.StatusUnauthorized,
+			expectedBodyContains: `{"error":"authorization header required"}`,
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
-			// Create fresh mocks for this subtest
+			// Setup inside t.Run for isolation
 			mockUserRepo := new(MockUserRepository)
 			mockCartRepo := new(MockCartRepository)
-
-			// VERY IMPORTANT: Update the handler's repo to use the fresh mock for this subtest
-			cartHandler.CartRepo = mockCartRepo
-
-			// Setup middleware with the fresh user repo mock for this subtest
+			mockProductRepo := new(MockProductRepository) // Needed for handler instantiation
+			cartHandler := handlers.NewCartHandler(mockCartRepo, mockProductRepo)
 			authMiddleware := auth.NewMiddleware(testJwtSecret, mockUserRepo)
+			router := mux.NewRouter()
+			router.Handle("/api/cart", authMiddleware.Authenticate(http.HandlerFunc(cartHandler.GetCart))).Methods("GET")
 
-			// Setup user repo mock for the middleware check AFTER middleware creation
-			mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(&models.User{ID: testUserID}, nil).Maybe()
+			// Conditionally setup user mock for middleware
+			if tc.name == "Error - Middleware User Check Fails" {
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(nil, users.ErrUserNotFound).Once()
+			} else if tc.name != "Error - No Auth Token" {
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(&models.User{ID: testUserID}, nil).Maybe() // Use Maybe for non-error cases
+			}
 
-			// Setup CartRepo mocks specific to this test case, passing the fresh mock
-			tc.mockGetOrCreateCart(mockCartRepo)
-			tc.mockGetItems(mockCartRepo)
+			// Setup CartRepo mocks specific to this test case
+			tc.mocksSetup(mockCartRepo)
+
+			// Generate token (or not for the specific test case)
+			var currentToken string
+			if tc.name != "Error - No Auth Token" {
+				var err error
+				currentToken, err = generateTestToken(testUserID)
+				require.NoError(t, err)
+			}
 
 			req, _ := http.NewRequest("GET", "/api/cart", nil)
-			req.Header.Set("Authorization", "Bearer "+token)
+			if currentToken != "" {
+				req.Header.Set("Authorization", "Bearer "+currentToken)
+			}
 
-			// Re-register the route with the new middleware instance for this subtest
-			// This ensures the correct mockUserRepo is used by the middleware
-			subRouter := mux.NewRouter()
-			subRouter.Handle("/api/cart", authMiddleware.Authenticate(http.HandlerFunc(cartHandler.GetCart))).Methods("GET")
+			executeRequestAndAssert(t, router, req, tc.expectedStatus, tc.expectedBodyContains)
 
-			executeRequestAndAssert(t, subRouter, req, tc.expectedStatus, tc.expectedBodyContains)
-
-			// Assert that all expected calls were made on the mocks for this subtest
+			// Assert mocks
 			mockCartRepo.AssertExpectations(t)
 			mockUserRepo.AssertExpectations(t)
 		})
@@ -151,44 +152,27 @@ func TestCartHandler_GetCart(t *testing.T) {
 
 // TestCartHandler_AddItem tests the POST /api/cart/items endpoint
 func TestCartHandler_AddItem(t *testing.T) {
-	// Explicitly capture all 9 return values
-	_, _, router, baseMockUserRepo, baseMockProductRepo, _, _, baseMockCartRepo, token := setupBaseTest(t)
-
-	// Handler created once, repos will be updated in t.Run
-	cartHandler := handlers.NewCartHandler(baseMockCartRepo, baseMockProductRepo)
-
-	claims, err := auth.ValidateToken(token, testJwtSecret)
-	require.NoError(t, err)
-	testUserID := claims.UserID
+	testUserID := uuid.New()
 	testCart := &models.Cart{ID: uuid.New(), UserID: testUserID}
 	productID := uuid.New()
 	testProduct := &models.Product{ID: productID, Name: "Test Item", Price: 19.99}
 	testQuantity := 2
 	testCartItem := &models.CartItem{CartID: testCart.ID, ProductID: productID, Quantity: testQuantity, Price: testProduct.Price}
 
-	// Route registered once with initial mocks (will be overridden in subtests)
-	router.Handle("/api/cart/items", auth.NewMiddleware(testJwtSecret, baseMockUserRepo).Authenticate(http.HandlerFunc(cartHandler.AddItem))).Methods("POST")
-
 	tests := []struct {
 		name                 string
 		body                 string
-		mockGetOrCreateCart  func(*MockCartRepository)    // Pass mock repo
-		mockFindProductByID  func(*MockProductRepository) // Pass mock repo
-		mockAddItem          func(*MockCartRepository)    // Pass mock repo
+		mocksSetup           func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository)
 		expectedStatus       int
 		expectedBodyContains string
 	}{
 		{
 			name: "Success - Add New Item",
 			body: fmt.Sprintf(`{"product_id":"%s", "quantity":%d}`, productID, testQuantity),
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Once()
-			},
-			mockFindProductByID: func(mockProductRepo *MockProductRepository) {
-				mockProductRepo.On("FindByID", mock.Anything, productID).Return(testProduct, nil).Once()
-			},
-			mockAddItem: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("AddItem", mock.Anything, testCart.ID, productID, testQuantity, testProduct.Price).Return(testCartItem, nil).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository) {
+				mockGetOrCreateCartSuccess(mockCartRepo, testUserID, testCart)
+				mockFindProductSuccess(mockProductRepo, testProduct)
+				mockAddItemSuccess(mockCartRepo, testCart.ID, productID, testQuantity, testProduct.Price, testCartItem)
 			},
 			expectedStatus:       http.StatusCreated,
 			expectedBodyContains: fmt.Sprintf(`{"id":"00000000-0000-0000-0000-000000000000","cart_id":"%s","product_id":"%s","quantity":%d,"price":%.2f,"created_at":"0001-01-01T00:00:00Z","updated_at":"0001-01-01T00:00:00Z"}`, testCart.ID, productID, testQuantity, testProduct.Price),
@@ -196,110 +180,127 @@ func TestCartHandler_AddItem(t *testing.T) {
 		{
 			name: "Error - Invalid Quantity (Zero)",
 			body: fmt.Sprintf(`{"product_id":"%s", "quantity":0}`, productID),
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository) {
+				mockGetOrCreateCartSuccess(mockCartRepo, testUserID, testCart)
+				// No product or add item mock needed
 			},
-			mockFindProductByID:  func(mockProductRepo *MockProductRepository) { /* Not called */ },
-			mockAddItem:          func(mockCartRepo *MockCartRepository) { /* Not called */ },
 			expectedStatus:       http.StatusBadRequest,
 			expectedBodyContains: `{"error":"quantity must be positive"}`,
 		},
 		{
 			name: "Error - Invalid Quantity (Negative)",
 			body: fmt.Sprintf(`{"product_id":"%s", "quantity":-1}`, productID),
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository) {
+				mockGetOrCreateCartSuccess(mockCartRepo, testUserID, testCart)
 			},
-			mockFindProductByID:  func(mockProductRepo *MockProductRepository) { /* Not called */ },
-			mockAddItem:          func(mockCartRepo *MockCartRepository) { /* Not called */ },
 			expectedStatus:       http.StatusBadRequest,
 			expectedBodyContains: `{"error":"quantity must be positive"}`,
 		},
 		{
 			name: "Error - Product Not Found",
 			body: fmt.Sprintf(`{"product_id":"%s", "quantity":%d}`, productID, testQuantity),
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository) {
+				mockGetOrCreateCartSuccess(mockCartRepo, testUserID, testCart)
+				mockFindProductNotFound(mockProductRepo, productID)
 			},
-			mockFindProductByID: func(mockProductRepo *MockProductRepository) {
-				mockProductRepo.On("FindByID", mock.Anything, productID).Return(nil, products.ErrProductNotFound).Once()
-			},
-			mockAddItem:          func(mockCartRepo *MockCartRepository) { /* Not called */ },
 			expectedStatus:       http.StatusNotFound,
 			expectedBodyContains: `{"error":"product not found"}`,
 		},
 		{
 			name: "Error - FindProductByID Fails (Internal Error)",
 			body: fmt.Sprintf(`{"product_id":"%s", "quantity":%d}`, productID, testQuantity),
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository) {
+				mockGetOrCreateCartSuccess(mockCartRepo, testUserID, testCart)
+				mockFindProductError(mockProductRepo, productID)
 			},
-			mockFindProductByID: func(mockProductRepo *MockProductRepository) {
-				mockProductRepo.On("FindByID", mock.Anything, productID).Return(nil, errors.New("db error")).Once()
-			},
-			mockAddItem:          func(mockCartRepo *MockCartRepository) { /* Not called */ },
 			expectedStatus:       http.StatusInternalServerError,
 			expectedBodyContains: `{"error":"failed to validate product"}`,
 		},
 		{
 			name: "Error - AddItem Fails",
 			body: fmt.Sprintf(`{"product_id":"%s", "quantity":%d}`, productID, testQuantity),
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Once()
-			},
-			mockFindProductByID: func(mockProductRepo *MockProductRepository) {
-				mockProductRepo.On("FindByID", mock.Anything, productID).Return(testProduct, nil).Once()
-			},
-			mockAddItem: func(mockCartRepo *MockCartRepository) {
-				mockCartRepo.On("AddItem", mock.Anything, testCart.ID, productID, testQuantity, testProduct.Price).Return(nil, errors.New("repo error")).Once()
+			mocksSetup: func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository) {
+				mockGetOrCreateCartSuccess(mockCartRepo, testUserID, testCart)
+				mockFindProductSuccess(mockProductRepo, testProduct)
+				mockAddItemError(mockCartRepo, testCart.ID, productID, testQuantity, testProduct.Price)
 			},
 			expectedStatus:       http.StatusInternalServerError,
 			expectedBodyContains: `{"error":"failed to add item to cart"}`,
 		},
 		{
 			name: "Error - Invalid JSON Body",
-			body: `{"product_id":"invalid", quantity:1}`, // Malformed JSON
-			mockGetOrCreateCart: func(mockCartRepo *MockCartRepository) {
+			body: `{"product_id": invalid}`, // Malformed JSON
+			mocksSetup: func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository) {
+				// May or may not call GetOrCreateCart depending on when body is parsed
 				mockCartRepo.On("GetOrCreateCartByUserID", mock.Anything, testUserID).Return(testCart, nil).Maybe()
 			},
-			mockFindProductByID:  func(mockProductRepo *MockProductRepository) { /* Not called */ },
-			mockAddItem:          func(mockCartRepo *MockCartRepository) { /* Not called */ },
 			expectedStatus:       http.StatusBadRequest,
 			expectedBodyContains: `{"error":"invalid request body"}`,
+		},
+		{
+			name: "Error - Middleware User Check Fails",
+			body: fmt.Sprintf(`{"product_id":"%s", "quantity":%d}`, productID, testQuantity),
+			mocksSetup: func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository) { /* No cart/product mocks needed */
+			},
+			expectedStatus:       http.StatusUnauthorized,
+			expectedBodyContains: `{"error":"user associated with token not found"}`,
+		},
+		{
+			name: "Error - No Auth Token",
+			body: fmt.Sprintf(`{"product_id":"%s", "quantity":%d}`, productID, testQuantity),
+			mocksSetup: func(mockCartRepo *MockCartRepository, mockProductRepo *MockProductRepository) { /* No cart/product mocks needed */
+			},
+			expectedStatus:       http.StatusUnauthorized,
+			expectedBodyContains: `{"error":"authorization header required"}`,
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
-			// Create fresh mocks for this subtest
+			// Setup inside t.Run
 			mockUserRepo := new(MockUserRepository)
 			mockCartRepo := new(MockCartRepository)
 			mockProductRepo := new(MockProductRepository)
-
-			// Update handler's repos
-			cartHandler.CartRepo = mockCartRepo
-			cartHandler.ProductRepo = mockProductRepo
-
-			// Setup middleware with fresh user repo
+			cartHandler := handlers.NewCartHandler(mockCartRepo, mockProductRepo)
 			authMiddleware := auth.NewMiddleware(testJwtSecret, mockUserRepo)
-			mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(&models.User{ID: testUserID}, nil).Maybe()
+			router := mux.NewRouter()
+			router.Handle("/api/cart/items", authMiddleware.Authenticate(http.HandlerFunc(cartHandler.AddItem))).Methods("POST")
 
-			// Setup specific mocks for this case
-			tc.mockGetOrCreateCart(mockCartRepo)
-			tc.mockFindProductByID(mockProductRepo)
-			tc.mockAddItem(mockCartRepo)
+			// Conditionally setup user mock for middleware
+			if tc.name == "Error - Middleware User Check Fails" {
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(nil, users.ErrUserNotFound).Once()
+			} else if tc.name != "Error - No Auth Token" {
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(&models.User{ID: testUserID}, nil).Maybe()
+			}
+
+			// Setup CartRepo and ProductRepo mocks
+			tc.mocksSetup(mockCartRepo, mockProductRepo)
+
+			// Generate token (or not)
+			var currentToken string
+			if tc.name != "Error - No Auth Token" {
+				var err error
+				currentToken, err = generateTestToken(testUserID)
+				require.NoError(t, err)
+			}
 
 			req, _ := http.NewRequest("POST", "/api/cart/items", strings.NewReader(tc.body))
-			req.Header.Set("Authorization", "Bearer "+token)
 			req.Header.Set("Content-Type", "application/json")
+			if currentToken != "" {
+				req.Header.Set("Authorization", "Bearer "+currentToken)
+			}
 
-			// Re-register route with new middleware
-			subRouter := mux.NewRouter()
-			subRouter.Handle("/api/cart/items", authMiddleware.Authenticate(http.HandlerFunc(cartHandler.AddItem))).Methods("POST")
+			rr := executeRequestAndAssert(t, router, req, tc.expectedStatus, "")
 
-			executeRequestAndAssert(t, subRouter, req, tc.expectedStatus, tc.expectedBodyContains)
+			// Assert body based on expected status
+			if tc.expectedStatus == http.StatusCreated {
+				assert.Contains(t, rr.Body.String(), tc.expectedBodyContains) // Check if created item is in response
+			} else {
+				require.JSONEq(t, tc.expectedBodyContains, rr.Body.String()) // Exact match for errors
+			}
 
+			// Assert mocks
 			mockCartRepo.AssertExpectations(t)
 			mockProductRepo.AssertExpectations(t)
 			mockUserRepo.AssertExpectations(t)
