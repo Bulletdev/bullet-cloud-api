@@ -208,7 +208,20 @@ golang-migrate/migrate (Migrações de Banco de Dados)
 *   `PUT /api/categories/{id}` (Protegido): Atualiza uma categoria existente.
 *   `DELETE /api/categories/{id}` (Protegido): Deleta uma categoria.
 
-*(Carrinho, Pedidos, Frete serão adicionados futuramente)*
+**Carrinho de Compras**
+*   `GET /api/cart` (Protegido): Recupera o carrinho atual do usuário.
+*   `POST /api/cart/items` (Protegido): Adiciona item ao carrinho (ou incrementa quantidade).
+*   `PUT /api/cart/items/{productId}` (Protegido): Atualiza a quantidade de um item no carrinho.
+*   `DELETE /api/cart/items/{productId}` (Protegido): Remove um item do carrinho.
+*   `DELETE /api/cart` (Protegido): Limpa todos os itens do carrinho.
+
+**Pedidos**
+*   `POST /api/orders` (Protegido): Cria um novo pedido a partir do carrinho atual.
+*   `GET /api/orders` (Protegido): Lista os pedidos do usuário autenticado.
+*   `GET /api/orders/{id}` (Protegido): Busca os detalhes de um pedido específico.
+*   `PATCH /api/orders/{id}/cancel` (Protegido): Cancela um pedido (se o status permitir).
+
+*(Frete será adicionado futuramente)*
 
 
 ## 🧪 Test

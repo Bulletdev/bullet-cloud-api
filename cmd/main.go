@@ -3,10 +3,12 @@ package main
 import (
 	"bullet-cloud-api/internal/addresses"
 	"bullet-cloud-api/internal/auth"
+	"bullet-cloud-api/internal/cart"
 	"bullet-cloud-api/internal/categories"
 	"bullet-cloud-api/internal/config"
 	"bullet-cloud-api/internal/database"
 	"bullet-cloud-api/internal/handlers"
+	"bullet-cloud-api/internal/orders"
 	"bullet-cloud-api/internal/products"
 	"bullet-cloud-api/internal/users"
 	"context"
@@ -36,13 +38,17 @@ func main() {
 	productRepo := products.NewPostgresProductRepository(dbPool)
 	categoryRepo := categories.NewPostgresCategoryRepository(dbPool)
 	addressRepo := addresses.NewPostgresAddressRepository(dbPool)
+	cartRepo := cart.NewPostgresCartRepository(dbPool)
+	orderRepo := orders.NewPostgresOrderRepository(dbPool)
 	authHandler := handlers.NewAuthHandler(userRepo, cfg.JWTSecret, defaultJWTExpiry)
 	userHandler := handlers.NewUserHandler(userRepo, addressRepo)
 	productHandler := handlers.NewProductHandler(productRepo)
 	categoryHandler := handlers.NewCategoryHandler(categoryRepo)
+	cartHandler := handlers.NewCartHandler(cartRepo, productRepo)
+	orderHandler := handlers.NewOrderHandler(orderRepo, cartRepo, addressRepo)
 	authMiddleware := auth.NewMiddleware(cfg.JWTSecret, userRepo)
 
-	r := setupRoutes(authHandler, userHandler, productHandler, categoryHandler, authMiddleware)
+	r := setupRoutes(authHandler, userHandler, productHandler, categoryHandler, cartHandler, orderHandler, authMiddleware)
 
 	port := os.Getenv("API_PORT")
 	if port == "" {
@@ -80,7 +86,7 @@ func main() {
 	log.Println("Server exited properly")
 }
 
-func setupRoutes(ah *handlers.AuthHandler, uh *handlers.UserHandler, ph *handlers.ProductHandler, ch *handlers.CategoryHandler, mw *auth.Middleware) *mux.Router {
+func setupRoutes(ah *handlers.AuthHandler, uh *handlers.UserHandler, ph *handlers.ProductHandler, ch *handlers.CategoryHandler, cartH *handlers.CartHandler, oh *handlers.OrderHandler, mw *auth.Middleware) *mux.Router {
 	r := mux.NewRouter()
 
 	apiV1 := r.PathPrefix("/api").Subrouter()
@@ -113,6 +119,21 @@ func setupRoutes(ah *handlers.AuthHandler, uh *handlers.UserHandler, ph *handler
 	protectedCategoryRoutes.HandleFunc("", ch.CreateCategory).Methods("POST")
 	protectedCategoryRoutes.HandleFunc("/{id:[0-9a-fA-F-]+}", ch.UpdateCategory).Methods("PUT")
 	protectedCategoryRoutes.HandleFunc("/{id:[0-9a-fA-F-]+}", ch.DeleteCategory).Methods("DELETE")
+
+	protectedCartRoutes := apiV1.PathPrefix("/cart").Subrouter()
+	protectedCartRoutes.Use(mw.Authenticate)
+	protectedCartRoutes.HandleFunc("", cartH.GetCart).Methods("GET")
+	protectedCartRoutes.HandleFunc("/items", cartH.AddItem).Methods("POST")
+	protectedCartRoutes.HandleFunc("/items/{productId:[0-9a-fA-F-]+}", cartH.UpdateItem).Methods("PUT")
+	protectedCartRoutes.HandleFunc("/items/{productId:[0-9a-fA-F-]+}", cartH.DeleteItem).Methods("DELETE")
+	protectedCartRoutes.HandleFunc("", cartH.ClearCart).Methods("DELETE")
+
+	protectedOrderRoutes := apiV1.PathPrefix("/orders").Subrouter()
+	protectedOrderRoutes.Use(mw.Authenticate)
+	protectedOrderRoutes.HandleFunc("", oh.CreateOrder).Methods("POST")
+	protectedOrderRoutes.HandleFunc("", oh.ListOrders).Methods("GET")
+	protectedOrderRoutes.HandleFunc("/{id:[0-9a-fA-F-]+}", oh.GetOrder).Methods("GET")
+	protectedOrderRoutes.HandleFunc("/{id:[0-9a-fA-F-]+}/cancel", oh.CancelOrder).Methods("PATCH")
 
 	return r
 }
