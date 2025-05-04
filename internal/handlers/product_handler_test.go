@@ -8,6 +8,7 @@ import (
 	"bullet-cloud-api/internal/users" // For user mock
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -278,17 +279,22 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 					}, tc.mockCreateErr).Once()
 			}
 
-			req := httptest.NewRequest(http.MethodPost, "/api/products", strings.NewReader(tc.body))
-			req.Header.Set("Content-Type", "application/json")
-			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization header required"}` {
-				req.Header.Set("Authorization", "Bearer "+testToken)
+			// --- Request Execution & Assertion ---
+			var reqBody io.Reader
+			if tc.body != "" {
+				reqBody = strings.NewReader(tc.body)
 			}
-			rr := httptest.NewRecorder()
 
-			router.ServeHTTP(rr, req)
+			// Determine token for the helper
+			currentToken := ""
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization header required"}` {
+				currentToken = testToken // Use the globally defined testToken for this test function
+			}
 
-			assert.Equal(t, tc.expectedStatus, rr.Code)
-			assert.Contains(t, rr.Body.String(), tc.expectedBody)
+			// Use the helper function
+			executeRequestAndAssert(t, router, http.MethodPost, "/api/products", currentToken, reqBody, tc.expectedStatus, tc.expectedBody)
+
+			// Assert mock expectations (still needed here)
 			mockUserRepo.AssertExpectations(t)
 			mockProductRepo.AssertExpectations(t)
 		})
