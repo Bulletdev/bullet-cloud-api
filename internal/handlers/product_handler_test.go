@@ -89,6 +89,7 @@ func TestProductHandler_GetAllProducts(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			mockRepo.On("FindAll", mock.Anything).Return(tc.mockReturn, tc.mockError).Once()
 
@@ -152,6 +153,7 @@ func TestProductHandler_GetProduct(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockRepo, _, _, _, router := setupProductTest(t)
@@ -266,6 +268,7 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockProductRepo, mockUserRepo, _, _, router := setupProductTest(t)
@@ -306,5 +309,262 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 	}
 }
 
-// TODO: Add tests for UpdateProduct
-// TODO: Add tests for DeleteProduct
+func TestProductHandler_UpdateProduct(t *testing.T) {
+	// Setup inside loop
+	testUserID := uuid.New()
+	productToUpdateID := uuid.New()
+	testJwtSecret := "test-secret-for-jwt-please-change"
+	testToken := generateTestToken(testUserID, testJwtSecret)
+
+	tests := []struct {
+		name           string
+		productID      string
+		body           string
+		mockUserReturn *models.User
+		mockUserErr    error
+		mockUpdateErr  error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "Success",
+			productID:      productToUpdateID.String(),
+			body:           `{"name":"Updated Gadget","description":"Better","price":129.99}`, // Include all fields
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockUpdateErr:  nil,
+			expectedStatus: http.StatusOK,
+			expectedBody:   "Updated Gadget",
+		},
+		{
+			name:           "Failure - Invalid UUID",
+			productID:      "not-a-uuid",
+			body:           `{"name":"Update Attempt"}`,
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockUpdateErr:  nil,
+			expectedStatus: http.StatusNotFound, // Expect 404 from router
+			expectedBody:   "404 page not found",
+		},
+		{
+			name:           "Failure - Invalid JSON",
+			productID:      productToUpdateID.String(),
+			body:           `{"name":}`, // Invalid JSON
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockUpdateErr:  nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"invalid request body"}`,
+		},
+		{
+			name:           "Failure - Missing Name",
+			productID:      productToUpdateID.String(),
+			body:           `{"price":50.0}`, // Missing name
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockUpdateErr:  nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"product name is required and price must be non-negative"}`,
+		},
+		{
+			name:           "Failure - Negative Price",
+			productID:      productToUpdateID.String(),
+			body:           `{"name":"Bad Price Product","price":-1.0}`,
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockUpdateErr:  nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"product name is required and price must be non-negative"}`,
+		},
+		{
+			name:           "Failure - Product Not Found",
+			productID:      productToUpdateID.String(),
+			body:           `{"name":"Update Attempt","price":10.0}`,
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockUpdateErr:  products.ErrProductNotFound,
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   `{"error":"product not found"}`,
+		},
+		{
+			name:           "Failure - Repo Update Error",
+			productID:      productToUpdateID.String(),
+			body:           `{"name":"Update Attempt","price":10.0}`,
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockUpdateErr:  errors.New("db update failed"),
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   `{"error":"failed to update product"}`,
+		},
+		{
+			name:           "Failure - Middleware User Check Fails",
+			productID:      productToUpdateID.String(),
+			body:           `{"name":"Update Attempt","price":10.0}`,
+			mockUserReturn: nil,
+			mockUserErr:    users.ErrUserNotFound,
+			mockUpdateErr:  nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   `{"error":"user associated with token not found"}`,
+		},
+		{
+			name:           "Failure - No Auth Token",
+			productID:      productToUpdateID.String(),
+			body:           `{"name":"Update Attempt","price":10.0}`,
+			mockUserReturn: nil,
+			mockUserErr:    nil,
+			mockUpdateErr:  nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   `{"error":"authorization header required"}`,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc // Capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			// Moved setup inside t.Run for isolation
+			mockProductRepo, mockUserRepo, _, _, router := setupProductTest(t)
+
+			// Mock middleware user check
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
+			}
+
+			// Mock product repo update (only if middleware/validation/parsing passes)
+			if tc.productID != "not-a-uuid" && tc.mockUserErr == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
+				parsedID, _ := uuid.Parse(tc.productID)
+				mockProductRepo.On("Update", mock.Anything, parsedID, mock.AnythingOfType("*models.Product")).
+					Return(func(ctx context.Context, id uuid.UUID, p *models.Product) *models.Product {
+						if tc.mockUpdateErr != nil {
+							return nil
+						}
+						p.ID = id
+						p.UpdatedAt = time.Now() // Simulate update
+						return p
+					}, tc.mockUpdateErr).Once()
+			}
+
+			req := httptest.NewRequest(http.MethodPut, "/api/products/"+tc.productID, strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization header required"}` {
+				req.Header.Set("Authorization", "Bearer "+testToken)
+			}
+
+			rr := httptest.NewRecorder()
+			router.ServeHTTP(rr, req)
+
+			assert.Equal(t, tc.expectedStatus, rr.Code)
+			assert.Contains(t, rr.Body.String(), tc.expectedBody)
+			mockUserRepo.AssertExpectations(t)
+			mockProductRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestProductHandler_DeleteProduct(t *testing.T) {
+	// Setup inside loop
+	testUserID := uuid.New()
+	productToDeleteID := uuid.New()
+	testJwtSecret := "test-secret-for-jwt-please-change"
+	testToken := generateTestToken(testUserID, testJwtSecret)
+
+	tests := []struct {
+		name           string
+		productID      string
+		mockUserReturn *models.User
+		mockUserErr    error
+		mockDeleteErr  error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "Success",
+			productID:      productToDeleteID.String(),
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockDeleteErr:  nil,
+			expectedStatus: http.StatusNoContent,
+			expectedBody:   "", // No body on success
+		},
+		{
+			name:           "Failure - Invalid UUID",
+			productID:      "not-a-uuid",
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockDeleteErr:  nil,
+			expectedStatus: http.StatusNotFound, // Expect 404 from router
+			expectedBody:   "404 page not found",
+		},
+		{
+			name:           "Failure - Product Not Found",
+			productID:      productToDeleteID.String(),
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockDeleteErr:  products.ErrProductNotFound,
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   `{"error":"product not found"}`,
+		},
+		{
+			name:           "Failure - Repo Delete Error",
+			productID:      productToDeleteID.String(),
+			mockUserReturn: &models.User{ID: testUserID},
+			mockUserErr:    nil,
+			mockDeleteErr:  errors.New("db delete failed"),
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   `{"error":"failed to delete product"}`,
+		},
+		{
+			name:           "Failure - Middleware User Check Fails",
+			productID:      productToDeleteID.String(),
+			mockUserReturn: nil,
+			mockUserErr:    users.ErrUserNotFound,
+			mockDeleteErr:  nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   `{"error":"user associated with token not found"}`,
+		},
+		{
+			name:           "Failure - No Auth Token",
+			productID:      productToDeleteID.String(),
+			mockUserReturn: nil,
+			mockUserErr:    nil,
+			mockDeleteErr:  nil,
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody:   `{"error":"authorization header required"}`,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc // Capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			// Moved setup inside t.Run for isolation
+			mockProductRepo, mockUserRepo, _, _, router := setupProductTest(t)
+
+			// Mock middleware user check
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody == `{"error":"user associated with token not found"}` {
+				mockUserRepo.On("FindByID", mock.Anything, testUserID).Return(tc.mockUserReturn, tc.mockUserErr).Once()
+			}
+
+			// Mock product repo delete (only if middleware/parsing passes)
+			if tc.productID != "not-a-uuid" && tc.mockUserErr == nil && tc.expectedStatus != http.StatusBadRequest && tc.expectedStatus != http.StatusUnauthorized {
+				parsedID, _ := uuid.Parse(tc.productID)
+				mockProductRepo.On("Delete", mock.Anything, parsedID).Return(tc.mockDeleteErr).Once()
+			}
+
+			req := httptest.NewRequest(http.MethodDelete, "/api/products/"+tc.productID, nil)
+			if tc.expectedStatus != http.StatusUnauthorized || tc.expectedBody != `{"error":"authorization header required"}` {
+				req.Header.Set("Authorization", "Bearer "+testToken)
+			}
+
+			rr := httptest.NewRecorder()
+			router.ServeHTTP(rr, req)
+
+			assert.Equal(t, tc.expectedStatus, rr.Code)
+			if tc.expectedBody != "" {
+				assert.Contains(t, rr.Body.String(), tc.expectedBody)
+			} else {
+				assert.Empty(t, rr.Body.String())
+			}
+			mockUserRepo.AssertExpectations(t)
+			mockProductRepo.AssertExpectations(t)
+		})
+	}
+}

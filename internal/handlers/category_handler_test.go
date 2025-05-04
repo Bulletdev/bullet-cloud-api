@@ -86,6 +86,7 @@ func TestCategoryHandler_GetAllCategories(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			mockRepo.On("FindAll", mock.Anything).Return(tc.mockReturn, tc.mockError).Once()
 
@@ -148,6 +149,7 @@ func TestCategoryHandler_GetCategory(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockRepo, _, _, _, router := setupCategoryTest(t)
@@ -252,6 +254,7 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
@@ -403,6 +406,7 @@ func TestCategoryHandler_UpdateCategory(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
@@ -515,6 +519,7 @@ func TestCategoryHandler_DeleteCategory(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			// Moved setup inside t.Run for isolation
 			mockCategoryRepo, mockUserRepo, _, _, router := setupCategoryTest(t)
