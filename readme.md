@@ -24,38 +24,24 @@
 </p>
 
 # ✨ Recursos Atuais e Planejados
-<div>
-Autenticação e Gerenciamento de Usuários (Registro, Login, Dados do Usuário, Endereços)
-</div>  
-<div>
-Gerenciamento de Produtos e Categorias
-</div>
-<div>
-Carrinho de Compras
-</div>
-<div>
-Gerenciamento de Pedidos (Criação e Listagem)
-</div>
-<div>
-Armazenamento de dados com PostgreSQL (via Supabase)
-</div> 
-<div>
-Autenticação segura com JWT e Hashing de Senha (bcrypt)
-</div> 
-<div>
-Endpoints RESTful com prefixo `/api`
-</div> 
-<div>
+ 
+- Autenticação e Gerenciamento de Usuários (Registro, Login, Dados do Usuário, Endereços)
+- Gerenciamento de Produtos e Categorias
+- Carrinho de Compras
+- Gerenciamento de Pedidos (Criação e Listagem)
+- Armazenamento de dados com PostgreSQL (via Supabase)
+- Autenticação segura com JWT e Hashing de Senha (bcrypt)
+- Endpoints RESTful com prefixo `/api`
 Health check
-</div> 
-<div> 
-Testes Unitários para Handlers (Auth, User/Address, Product, Category, Cart)
-</div> 
-<div>
-*Planejado:* Testes para OrderHandler, Testes de Integração, Lógica de Frete, Paginação, Filtros, Validação Avançada, Permissões (Admin), Documentação Swagger completa.
-</div>
+- Testes Unitários para Handlers (Auth, User/Address, Product, Category, Cart)
 
-## 🚀 Exemplo de uso
+## Planejado:
+>>> Testes para OrderHandler, Testes de Integração, Lógica de Frete, Paginação, Filtros, Validação Avançada, Permissões (Admin), Documentação Swagger completa.
+
+
+##  Exemplo de uso
+
+<details>
 
 (Veja a seção Endpoints Atuais para mais detalhes)
 
@@ -126,6 +112,7 @@ curl -X POST http://localhost:4444/api/orders \\
 -H "Authorization: Bearer $TOKEN"
 ```
 
+</details>
 
 ## Documentação da API (Planejada)
 
@@ -220,6 +207,8 @@ stretchr/testify (Testes Unitários)
 
 ## 🔍 Endpoints Atuais
 
+<details>
+ 
 **Saúde**
 *   `GET /api/health`: Verifica status da aplicação.
 
@@ -323,6 +312,8 @@ stretchr/testify (Testes Unitários)
     *   **Sucesso (200):** Objeto `{"order": {...}, "items": [{...}]}`.
     *   **Erros:** `401`, `403` (não é dono), `404` (pedido não encontrado/ID inválido), `500`.
 
+</details>
+
 *(Funcionalidades de Pedidos como cancelamento e atualização de status foram implementadas no repositório mas não expostas em rotas ainda).*
 
 
@@ -333,6 +324,7 @@ Para rodar os testes unitários dos handlers:
 go test -v ./internal/handlers/...
 ```
 
-📄 Licença
+### 📄 Licença
 
-BulletDEv all rights reserveds
+GNU-General-Public-License-v3.0
+
