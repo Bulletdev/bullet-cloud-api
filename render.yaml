@@ -17,4 +17,4 @@ services:
     buildCommand: go mod tidy
     startCommand: go run cmd/main.go
     autoDeploy: false
-version: "1"
+version: "1" 
