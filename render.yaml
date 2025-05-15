@@ -14,7 +14,9 @@ services:
       - key: test
         sync: false
     region: ohio
-    buildCommand: go mod tidy
+    buildCommand: |
+      go mod tidy
+      go mod vendor
     startCommand: go run cmd/main.go
     autoDeploy: false
 version: "1"
