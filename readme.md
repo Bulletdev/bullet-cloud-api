@@ -7,7 +7,7 @@
 <img src="https://img.shields.io/badge/status-Em%20Desenvolvimento-Orange"> 
 </p>     
    
-# API RESTful em Go para E-commerce (Bullet Cloud API)
+# API RESTful em Go para E-commerce
  
 <p align="center"> 
   <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/Bulletdev/bullet-cloud-api?color=04D361&labelColor=000000">  
