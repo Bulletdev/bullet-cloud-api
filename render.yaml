@@ -9,8 +9,8 @@ services:
         sync: false
       - key: CorsOrigins
         sync: false
-      - key: Port
-        sync: false
+      - key: PORT
+        value: "10000"
       - key: test
         sync: false
     region: ohio
