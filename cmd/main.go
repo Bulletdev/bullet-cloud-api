@@ -12,7 +12,9 @@ import (
 	"bullet-cloud-api/internal/products"
 	"bullet-cloud-api/internal/users"
 	"context"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,7 +25,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const defaultPort = "4444"
+const defaultPortStart = 4445
 const defaultJWTExpiry = 24 * time.Hour
 
 func main() {
@@ -60,20 +62,30 @@ func main() {
 	r := setupRoutes(authHandler, userHandler, productHandler, categoryHandler, cartHandler, orderHandler, authMiddleware)
 
 	// --- Determine Port ---
-	port := os.Getenv("PORT") // 1. Check Render's/Environment PORT variable
+	port := os.Getenv("PORT")
 	if port == "" {
-		port = defaultPort // 2. Use default if PORT is not set
-	}
-	// Basic validation (optional but recommended)
-	if _, err := strconv.Atoi(port); err != nil {
-		log.Fatalf("Invalid port number: %s", port)
+		for p := defaultPortStart; p < defaultPortStart+100; p++ {
+			addr := fmt.Sprintf(":%d", p)
+			ln, err := net.Listen("tcp", addr)
+			if err == nil {
+				ln.Close()
+				port = strconv.Itoa(p)
+				log.Printf("PORT not set. Using first available port: %s", port)
+				break
+			}
+		}
+		if port == "" {
+			log.Fatal("No available ports found from 4445 to 4545")
+		}
+	} else {
+		log.Printf("Using PORT from environment: %s", port)
 	}
 	listenAddr := ":" + port
 	// --- End Determine Port ---
 
 	// Configure HTTP server
 	srv := &http.Server{
-		Addr:         listenAddr, // Use the determined address
+		Addr:         listenAddr,
 		Handler:      r,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -84,7 +96,6 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start server in a goroutine
 	go func() {
 		log.Printf("Server starting on port %s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -92,11 +103,9 @@ func main() {
 		}
 	}()
 
-	// Wait for shutdown signal
 	<-done
 	log.Println("Server shutting down gracefully...")
 
-	// Create context for shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -108,9 +117,16 @@ func main() {
 }
 
 // setupRoutes configures the API routes using mux router.
-func setupRoutes(ah *handlers.AuthHandler, uh *handlers.UserHandler, ph *handlers.ProductHandler, ch *handlers.CategoryHandler, cartH *handlers.CartHandler, oh *handlers.OrderHandler, mw *auth.Middleware) *mux.Router {
+func setupRoutes(
+	ah *handlers.AuthHandler,
+	uh *handlers.UserHandler,
+	ph *handlers.ProductHandler,
+	ch *handlers.CategoryHandler,
+	cartH *handlers.CartHandler,
+	oh *handlers.OrderHandler,
+	mw *auth.Middleware,
+) *mux.Router {
 	r := mux.NewRouter()
-
 	apiV1 := r.PathPrefix("/api").Subrouter()
 
 	// Public routes
@@ -122,7 +138,7 @@ func setupRoutes(ah *handlers.AuthHandler, uh *handlers.UserHandler, ph *handler
 	apiV1.HandleFunc("/categories", ch.GetAllCategories).Methods("GET")
 	apiV1.HandleFunc("/categories/{id:[0-9a-fA-F-]+}", ch.GetCategory).Methods("GET")
 
-	// Protected routes (grouped by resource)
+	// Protected routes
 	protectedUserRoutes := apiV1.PathPrefix("/users").Subrouter()
 	protectedUserRoutes.Use(mw.Authenticate)
 	protectedUserRoutes.HandleFunc("/me", uh.GetMe).Methods("GET")
