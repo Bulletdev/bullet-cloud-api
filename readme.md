@@ -18,7 +18,7 @@
   
   <img alt="Repository size" src="https://img.shields.io/github/repo-size/bulletdev/bullet-cloud-api?color=04D361&labelColor=000000">
   
-  <a href="https://github.com/Bulletdev/bullet-cloud-api/commits/master">
+  <a href="https://github.com/Bulletdev/go-cart-api/commits/master">
     <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/bulletdev/bullet-cloud-api?color=04D361&labelColor=000000">
   </a>
 </p>
@@ -162,8 +162,8 @@ stretchr/testify (Testes Unitários)
 
 1.  **Clonar o repositório:**
     ```bash
-    git clone https://github.com/bulletdev/bullet-cloud-api.git
-    cd bullet-cloud-api
+    git clone https://github.com/bulletdev/go-cart-api.git
+    cd go-cart-api
     ```
 2.  **Configurar Variáveis de Ambiente:**
     *   Crie um arquivo chamado `.env` na raiz do projeto.
