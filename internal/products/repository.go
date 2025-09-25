@@ -19,6 +19,7 @@ type ProductRepository interface {
 	Create(ctx context.Context, product *models.Product) (*models.Product, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Product, error)
 	FindAll(ctx context.Context /* TODO: Add filtering/pagination params */) ([]models.Product, error)
+	Search(ctx context.Context, query string) ([]models.Product, error)
 	Update(ctx context.Context, id uuid.UUID, product *models.Product) (*models.Product, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -115,6 +116,51 @@ func (r *postgresProductRepository) FindAll(ctx context.Context) ([]models.Produ
 
 	if rows.Err() != nil {
 		return nil, rows.Err() // Return error encountered during iteration
+	}
+
+	return products, nil
+}
+
+// Search retrieves products that match the search query (name or description).
+func (r *postgresProductRepository) Search(ctx context.Context, query string) ([]models.Product, error) {
+	searchQuery := `
+		SELECT id, name, description, price, category_id, created_at, updated_at
+		FROM products
+		WHERE name ILIKE $1 OR description ILIKE $1
+		ORDER BY
+			CASE
+				WHEN name ILIKE $1 THEN 1
+				ELSE 2
+			END,
+			created_at DESC
+	`
+	searchPattern := "%" + query + "%"
+	rows, err := r.db.Query(ctx, searchQuery, searchPattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	products := make([]models.Product, 0)
+	for rows.Next() {
+		var product models.Product
+		err := rows.Scan(
+			&product.ID,
+			&product.Name,
+			&product.Description,
+			&product.Price,
+			&product.CategoryID,
+			&product.CreatedAt,
+			&product.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, product)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return products, nil

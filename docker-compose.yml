@@ -1,0 +1,49 @@
+services:
+  app:
+    build: .
+    ports:
+      - "4444:4444"
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/bulletcloud?sslmode=disable
+      - PORT=4444
+      - ENV=development
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - JWT_ACCESS_EXPIRY=15m
+      - JWT_REFRESH_EXPIRY=168h
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002
+      - BCRYPT_COST=12
+      - MAX_LOGIN_ATTEMPTS=5
+      - LOCKOUT_DURATION=30m
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=bulletcloud
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bulletcloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

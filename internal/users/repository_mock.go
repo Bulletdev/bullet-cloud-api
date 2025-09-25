@@ -36,7 +36,6 @@ func (_m *MockUserRepository) Create(ctx context.Context, name string, email str
 	return r0, r1
 }
 
-// FindByEmail provides a mock function with given fields: ctx, email
 func (_m *MockUserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	ret := _m.Called(ctx, email)
 
@@ -59,7 +58,6 @@ func (_m *MockUserRepository) FindByEmail(ctx context.Context, email string) (*m
 	return r0, r1
 }
 
-// FindByID provides a mock function with given fields: ctx, id
 func (_m *MockUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	ret := _m.Called(ctx, id)
 

@@ -92,6 +92,24 @@ func (h *ProductHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) 
 	webutils.WriteJSON(w, http.StatusOK, productList)
 }
 
+// SearchProducts handles GET requests to search products by query.
+// This is often a public endpoint.
+func (h *ProductHandler) SearchProducts(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		webutils.ErrorJSON(w, errors.New("search query parameter 'q' is required"), http.StatusBadRequest)
+		return
+	}
+
+	productList, err := h.ProductRepo.Search(r.Context(), query)
+	if err != nil {
+		webutils.ErrorJSON(w, errors.New("failed to search products"), http.StatusInternalServerError)
+		return
+	}
+
+	webutils.WriteJSON(w, http.StatusOK, productList)
+}
+
 // GetProduct handles GET requests for a specific product by ID.
 // This is often a public endpoint.
 func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {

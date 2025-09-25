@@ -134,6 +134,7 @@ func setupRoutes(
 	apiV1.HandleFunc("/auth/register", ah.Register).Methods("POST")
 	apiV1.HandleFunc("/auth/login", ah.Login).Methods("POST")
 	apiV1.HandleFunc("/products", ph.GetAllProducts).Methods("GET")
+	apiV1.HandleFunc("/products/search", ph.SearchProducts).Methods("GET")
 	apiV1.HandleFunc("/products/{id:[0-9a-fA-F-]+}", ph.GetProduct).Methods("GET")
 	apiV1.HandleFunc("/categories", ch.GetAllCategories).Methods("GET")
 	apiV1.HandleFunc("/categories/{id:[0-9a-fA-F-]+}", ch.GetCategory).Methods("GET")

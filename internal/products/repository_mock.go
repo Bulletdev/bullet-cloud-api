@@ -82,6 +82,29 @@ func (_m *MockProductRepository) FindAll(ctx context.Context) ([]models.Product,
 	return r0, r1
 }
 
+// Search provides a mock function with given fields: ctx, query
+func (_m *MockProductRepository) Search(ctx context.Context, query string) ([]models.Product, error) {
+	ret := _m.Called(ctx, query)
+
+	var r0 []models.Product
+	if rf, ok := ret.Get(0).(func(context.Context, string) []models.Product); ok {
+		r0 = rf(ctx, query)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Product)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, query)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Update provides a mock function with given fields: ctx, id, product
 func (_m *MockProductRepository) Update(ctx context.Context, id uuid.UUID, product *models.Product) (*models.Product, error) {
 	ret := _m.Called(ctx, id, product)
