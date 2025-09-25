@@ -88,6 +88,13 @@ func (m *MockProductRepository) Delete(ctx context.Context, id uuid.UUID) error 
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
+func (m *MockProductRepository) Search(ctx context.Context, query string) ([]models.Product, error) {
+	args := m.Called(ctx, query)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.Product), args.Error(1)
+}
 func (m *MockProductRepository) FindByCategoryID(ctx context.Context, categoryID uuid.UUID) ([]models.Product, error) {
 	args := m.Called(ctx, categoryID)
 	if args.Get(0) == nil {
