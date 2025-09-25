@@ -1,6 +1,21 @@
 # Environment variables
 .env
 
+vendor
+vendor/*
+
+.env.local
+.env.*.local
+.env.test.local
+.env.production.local
+.env.development.local
+.env.staging.local
+.env.test
+.env.production
+.env.development
+.env.staging
+.env.example
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
