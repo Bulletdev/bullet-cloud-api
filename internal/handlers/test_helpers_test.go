@@ -316,6 +316,15 @@ func setupDummyDbPool(t *testing.T) *pgxpool.Pool {
 
 // --- Mock Setup Helpers ---
 
+// mockReturn is a helper to reduce duplication in mock return value handling
+func mockReturn[T any](args mock.Arguments, index int) T {
+	if args.Get(index) == nil {
+		var zero T
+		return zero
+	}
+	return args.Get(index).(T)
+}
+
 // Mocks successful GetOrCreateCartByUserID call
 func mockGetOrCreateCartSuccess(m *MockCartRepository, userID uuid.UUID, cartToReturn *models.Cart) {
 	m.On("GetOrCreateCartByUserID", mock.Anything, userID).Return(cartToReturn, nil).Once()

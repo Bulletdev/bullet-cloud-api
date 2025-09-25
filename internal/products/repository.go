@@ -90,35 +90,7 @@ func (r *postgresProductRepository) FindAll(ctx context.Context) ([]models.Produ
 		ORDER BY created_at DESC -- Example ordering
 		-- TODO: Add LIMIT and OFFSET for pagination
 	`
-	rows, err := r.db.Query(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	products := make([]models.Product, 0)
-	for rows.Next() {
-		var product models.Product
-		err := rows.Scan(
-			&product.ID,
-			&product.Name,
-			&product.Description,
-			&product.Price,
-			&product.CategoryID,
-			&product.CreatedAt,
-			&product.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err // Return error on scan failure
-		}
-		products = append(products, product)
-	}
-
-	if rows.Err() != nil {
-		return nil, rows.Err() // Return error encountered during iteration
-	}
-
-	return products, nil
+	return r.scanProductRows(ctx, query)
 }
 
 // Search retrieves products that match the search query (name or description).
@@ -135,7 +107,12 @@ func (r *postgresProductRepository) Search(ctx context.Context, query string) ([
 			created_at DESC
 	`
 	searchPattern := "%" + query + "%"
-	rows, err := r.db.Query(ctx, searchQuery, searchPattern)
+	return r.scanProductRows(ctx, searchQuery, searchPattern)
+}
+
+// scanProductRows is a helper function to scan multiple product rows and reduce code duplication.
+func (r *postgresProductRepository) scanProductRows(ctx context.Context, query string, args ...interface{}) ([]models.Product, error) {
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
